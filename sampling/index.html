@@ -1,0 +1,574 @@
+<head>
+  <script src="../../libs/plotly-latest.min.js"></script>
+  <script src="../../libs/jquery-min.js"></script>
+  <script src="../ControlSystems.js"></script>
+  <script type="text/x-mathjax-config">
+    MathJax.Hub.Config({tex2jax: {inlineMath: [['$','$'], ['\\(','\\)']]}});
+  </script>
+  <script src="../../libs/MathJax-2.7.3/MathJax.js?config=TeX-AMS_CHTML"></script>
+  <script src="../../libs/p5/p5.js"></script>
+  <script src="compute.js"></script>
+  <script src="../../libs/jquery-ui/jquery-ui.min.js"></script>
+  <link rel="stylesheet" href="../../libs/jquery-ui/themes/smoothness/jquery-ui.css">
+
+  <script src="../../libs/helpLib.js"></script>
+  <link rel="stylesheet" href="../../libs/helpLib.css">
+
+
+  <style type="text/css">
+    
+body {
+    user-select: none; /* supported by Chrome and Opera */
+   -webkit-user-select: none; /* Safari */
+   -khtml-user-select: none; /* Konqueror HTML */
+   -moz-user-select: none; /* Firefox */
+   -ms-user-select: none; /* Internet Explorer/Edge */
+}   
+
+  </style>
+</head>
+
+<body>
+
+<table width="100%">
+  <tr>
+    <td><h2>Sampling:</h2></td> <td align="right"> <a href='#' onclick="help()">How to use:</a> </td>
+  </tr>
+</table>
+
+
+<div id="helpDiv" style="display: none;" title="Sampling WebApp">
+In this WebApp you can visualize the effects of signal sampling.<br>
+Use the slider to change the sampling frequency, pulse width and filter bandwidth. As you do it, you can visualize in real time the result of sampling and reconstruction either in the time domain and in the frequency domain.<br>
+Select the signal in the corresponding selection box.<br>
+
+<p>
+Press OK to see the function of each element in the WebApp.
+  </div>
+</div>
+
+
+
+<p>
+Sampling type: 
+<select id = "selectSamplingType" onchange="selectSamplingType_changed()">  
+	<option value="0">impulse</option>
+	<option value="1">pulse</option>
+</select>
+
+Signal: 
+<select id = "selectSignal" onchange="selectSignal_changed()">  
+	<option value="0">Bandlimited 1</option>
+	<option value="1">Bandlimited 2</option>
+	<option value="2">Wideband 1</option>
+	<option value="3">Wideband 2</option>
+	<option value="4">Sinusoid</option>
+</select>
+</p>
+
+
+
+<input type="range" id="rangeT" oninput="rangeTChanged();" min="0.01" max="1" step="0.01" value="0.5" style="width: 400px"> <span id="spanT">0.5</span>
+
+<input type="range" id="rangePulse" oninput="rangePulseChanged();" min="1" max="20" step="1" value="4" style="width: 100px"> <span id="spanPulse">4</span>
+
+<input type="range" id="rangeFilter" oninput="rangeFilterChanged();" min="0.01" max="1.0" step="0.01" value="0.25" style="width: 100px"> <span id="spanFilter">0.25</span>
+
+  <table>
+  	<tr>
+  		<td>
+			<div id="timeOriginalDiv" style="width:650px;height:200px;"></div>
+		</td>
+		<td>
+			<div id="freqOriginalDiv" style="width:650px;height:200px;"></div>
+		</td>
+	</tr>
+  	<tr>
+  		<td>
+			<div id="timeSampledDiv" style="width:650px;height:200px;"></div>
+		</td>
+		<td>
+			<div id="freqSampledDiv" style="width:650px;height:200px;"></div>
+		</td>
+	</tr>
+  	<tr>
+  		<td>
+			<div id="timeRecoveredDiv" style="width:650px;height:200px;"></div>
+		</td>
+		<td>
+			<div id="freqRecoveredDiv" style="width:650px;height:200px;"></div>
+		</td>
+	</tr>
+</table>
+
+
+  <script>
+
+
+  	var lineWidth = 2;
+
+  	var N = 2048;
+  	var T = 0.5;
+  	var maxTime = 10;
+  	var maxFreq = 1/T;
+  	var YAmp = 2.1;
+  	var pulseWidth = 4;
+  	var filterWidth = 0.25;
+  	var samplingType = 0;
+  	var signalFunc = func0;
+
+  	var time = new Array(N).fill(0);
+  	var freq = new Array(N).fill(0);
+
+  	var xOriginal = new Array(N).fill(0);
+  	var XOriginal = new Array(N).fill(0);
+  	var xOriginalR = new Array(N).fill(0);
+  	var XOriginalR = new Array(N).fill(0);
+	var xOriginalI = new Array(N).fill(0);
+	var XOriginalI = new Array(N).fill(0);
+
+
+  	var xSampled = new Array(N).fill(0);
+  	var XSampled = new Array(N).fill(0);
+  	var xSampledR = new Array(N).fill(0);
+  	var XSampledR = new Array(N).fill(0);
+	var xSampledI = new Array(N).fill(0);
+	var XSampledI = new Array(N).fill(0);
+
+  	var xRecovered = new Array(N).fill(0);
+  	var XRecovered = new Array(N).fill(0);
+  	var xRecoveredR = new Array(N).fill(0);
+  	var XRecoveredR = new Array(N).fill(0);
+  	var xRecoveredI = new Array(N).fill(0);
+  	var XRecoveredI = new Array(N).fill(0);
+
+  	var XFilter = [-maxFreq, -filterWidth, -filterWidth, filterWidth, filterWidth, maxFreq];
+  	var YFilter = [0, 0, 1.5, 1.5, 0, 0];
+
+	var timeOriginal = createOutputPlot('timeOriginalDiv', 'Original signal', 'time');
+	var timeSampled = createOutputPlot('timeSampledDiv','Sampled signal','time');
+	var timeRecovered = createOutputPlot('timeRecoveredDiv', 'Reconstructed signal','time');
+
+	var freqOriginal = createOutputPlot('freqOriginalDiv', 'Original signal', 'frequency');
+	var freqSampled = createOutputPlot('freqSampledDiv','Sampled signal','frequency');
+	var freqRecovered = createOutputPlot('freqRecoveredDiv', 'Reconstructed signal','frequency');
+	freqOriginal.layout.yaxis.range[0] = -0.01;
+	freqSampled.layout.yaxis.range[0] = -0.01;
+	freqRecovered.layout.yaxis.range[0] = -0.01;
+
+
+
+
+
+
+
+
+
+	function init() {
+
+
+		let t = 0;
+		let dt = maxTime/N; 
+		for (var i = 0; i < N; i++) {
+			time[i] = t;
+			t += dt;
+		}
+
+		let w = -1/T;
+		let dw = 2/(N*T); 
+		for (var i = 0; i < N; i++) {
+			freq[i] = w;
+			w += dw;
+		}
+
+
+    	timeOriginal.traces.push({
+			mode: "lines",
+			line : { width : lineWidth , color: '#8080f0'},
+			x: time, 
+			y: xOriginal
+		});
+    	timeOriginal.layout.xaxis.range = [3*maxTime/8, 5*maxTime/8];
+
+
+    	freqOriginal.traces.push({
+			mode: "lines",
+			line : { width : lineWidth , color: '#f0aff0'},
+			x: freq, 
+			y: XOriginal
+		});
+    	freqOriginal.layout.xaxis.range = [-maxFreq/2, maxFreq/2];
+    	freqOriginal.layout.yaxis.autorange = false;
+
+
+
+
+
+    	timeSampled.traces.push({
+			mode: "lines",
+			line : { width : lineWidth-1 , color: '#c0c0c0'},
+			x: time, 
+			y: xOriginal
+		},{
+			mode: "lines",
+			line : { width : lineWidth , color: '#8080f0'},
+			x: time, 
+			y: xSampled
+		});
+    	timeSampled.layout.xaxis.range = [3*maxTime/8, 5*maxTime/8];
+
+
+    	freqSampled.traces.push({
+			mode: "lines",
+			line : { width : lineWidth , color: '#f0aff0'},
+			x: freq, 
+			y: XSampled
+		});
+    	freqSampled.layout.xaxis.range = [-maxFreq/2, maxFreq/2];
+    	freqSampled.layout.yaxis.autorange = false;
+
+
+
+
+
+    	timeRecovered.traces.push({
+			mode: "lines",
+			line : { width : lineWidth , color: '#8080f0'},
+			x: time, 
+			y: xRecovered
+		});
+    	timeRecovered.layout.xaxis.range = [3*maxTime/8, 5*maxTime/8];
+
+
+    	freqRecovered.traces.push({
+			mode: "lines",
+			line : { width : lineWidth-1 , color: '#c0c0c0'},
+			x: freq, 
+			y: XSampled
+		},{
+			mode: "lines",
+			line : { width : lineWidth , color: '#f0aff0'},
+			x: freq, 
+			y: XRecovered
+		}, {
+			mode: "lines",
+			line : { width : lineWidth , color: '#ff5050'},
+			x: XFilter, 
+			y: YFilter
+		});
+    	freqRecovered.layout.xaxis.range = [-maxFreq/2, maxFreq/2];
+    	freqRecovered.layout.yaxis.autorange = false;
+
+
+
+
+
+
+
+		compute();
+
+		updatePlots();
+
+	}
+
+
+
+
+    function selectSamplingType_changed() {
+    	samplingType = parseInt($('#selectSamplingType')[0].value);
+
+		compute();
+
+		updatePlots();	
+    }
+
+
+
+
+    function rangeTChanged() {
+
+    	T = parseFloat($('#rangeT').val());
+
+		$('#spanT').html( $('#rangeT').val() );	
+
+		compute();
+
+		updatePlots();	
+    }
+
+
+
+	function rangePulseChanged() {
+
+		pulseWidth = parseInt($('#rangePulse').val());
+
+		$('#spanPulse').html( $('#rangePulse').val() );	
+
+		compute();
+
+		updatePlots();	
+	}
+
+
+
+	function rangeFilterChanged() {
+
+		filterWidth = parseFloat($('#rangeFilter').val());
+
+		$('#spanFilter').html( $('#rangeFilter').val() );	
+
+
+		XFilter[1] = -filterWidth;
+		XFilter[2] = -filterWidth;
+		XFilter[3] = filterWidth;
+		XFilter[4] = filterWidth;
+
+		compute();
+		updatePlots();
+	}
+
+
+
+	function selectSignal_changed() {
+		let option = parseInt($('#selectSignal').val());
+
+
+		signalFunc = SIGNALS[option];
+
+
+		compute();
+		updatePlots();
+
+	}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    function compute() {
+
+		let t = 0.0;
+		let dt = maxTime/N;
+		let nSkip = parseInt(2-Math.log10(T)*80);
+
+		// time domain (original and sampled)
+
+		var pulseTime = 0;
+
+		for (var i = 0; i < N; i++) {
+			
+			xOriginalR[i] = signalFunc(t);
+
+			var inPulse = false;
+			for (var j = 0; j < pulseWidth*samplingType; j++) {
+				inPulse |= ((i+j)%nSkip==0);
+			}
+
+			if ((i%nSkip==0) || inPulse)
+				xSampledR[i] = signalFunc(pulseTime);
+			else {
+				xSampledR[i] = 0;
+				pulseTime = t;
+			}
+
+			t += dt;
+		}
+
+
+
+		// freq original
+
+		fft(xOriginalR, xOriginalI, XOriginalR, XOriginalI, 1);
+
+
+
+		// freq sampled
+
+		fft(xSampledR, xSampledI, XSampledR, XSampledI, 1);
+
+
+
+
+
+		// freq recovered
+
+		for (var i = 0; i < N; i++) {
+			if ( ( i < N*.5*filterWidth/maxFreq  )||( i > N*(1-.5*filterWidth/maxFreq)  )  ) {
+				XRecoveredR[i] = XSampledR[i];
+				XRecoveredI[i] = XSampledI[i];
+			} else {
+				XRecoveredR[i] = 0.0;
+				XRecoveredI[i] = 0.0;
+			}
+		}
+
+		fft(XRecoveredR, XRecoveredI, xRecoveredR, xRecoveredI, -1);
+
+
+
+
+
+
+		// perform all cosmetics AFTER computations...
+
+		for (var i = 0; i < N; i++) {
+			xOriginal[i] = xOriginalR[i];
+			xSampled[i] = xSampledR[i];
+			xRecovered[i] = xRecoveredR[i]/N;
+
+		}
+
+		mag(XOriginalR, XOriginalI, XOriginal);
+		mag(XSampledR, XSampledI, XSampled, nSkip/(1+20*samplingType));
+		mag(XRecoveredR, XRecoveredI, XRecovered, nSkip/(1+20*samplingType));
+
+		fftFlip(XOriginal);
+		fftFlip(XSampled);
+		fftFlip(XRecovered);
+    }
+
+
+
+
+    function updatePlots() {
+
+    	Plotly.redraw('timeOriginalDiv');
+    	Plotly.redraw('freqOriginalDiv');
+
+    	Plotly.redraw('timeSampledDiv');
+    	Plotly.redraw('freqSampledDiv');
+
+    	Plotly.redraw('timeRecoveredDiv');
+    	Plotly.redraw('freqRecoveredDiv');
+
+    }
+
+
+
+
+    init();
+
+
+
+
+
+
+
+
+
+
+
+  function help() {
+
+
+    $('#helpDiv').dialog({
+      height: 600,
+      width: 600,
+      modal: true,
+      buttons: {
+        Cancel: function() {
+          $('#helpDiv').dialog( "close" );
+        },
+        Ok : function() {
+          $('#helpDiv').dialog( "close" );
+
+
+
+
+
+
+
+
+
+    showHelp($('#selectSamplingType'), '\
+Select how the signal will be sampled (using square pulses or impulses)\
+   	',()=>{
+
+    showHelp($('#selectSignal'), ' \
+Select the signal to be sampled\
+    ',()=>{
+
+    showHelp($('#rangeT'), '\
+Change the sampling time to see in real time the changes in the signals\
+   	' ,()=>{
+
+    showHelp($('#rangePulse'), '\
+Change the pulse width (for the case of pulse sampling)\
+   	',()=>{
+
+    showHelp($('#rangeFilter'), '\
+Change the bandwidth of the recovering filter\
+   	',()=>{
+
+    showHelp($('#timeOriginalDiv'), '\
+This plot shows the original signal\
+    ',()=>{
+
+    showHelp($('#timeSampledDiv'), '\
+Here we have the sampled signal. The original one is also shown a bit faded for reference\
+    ',()=>{
+              
+    showHelp($('#timeRecoveredDiv'), '\
+This is the recovered signal after the sampling and filtering\
+    ',()=>{
+              
+    showHelp($('#freqOriginalDiv'), '\
+This is the spectrum of the original signal\
+    ',()=>{
+              
+    showHelp($('#freqSampledDiv'), '\
+Here we have the spectrum of the sampled signal. The \
+    ',()=>{
+              
+    showHelp($('#freqRecoveredDiv'), '\
+Finally we have the filtered spectrum. The original sampled is shown for reference\
+    ',()=>{
+              
+
+    }, null, 1);
+
+    });
+      
+    });
+
+    }, null, 1);
+      
+    });
+
+    });
+      
+    });
+
+    });
+
+    });
+      
+    });
+
+    });
+
+
+
+
+
+        } // dialog
+      } 
+    });
+
+
+  }
+
+
+  </script>
+</body>
+

@@ -1,0 +1,326 @@
+<!doctype html>
+<html>
+<head>
+  <link rel="stylesheet" href="../../libs/jquery-ui/jquery-ui.css">
+
+	<script src="../../libs/d3.v3.min.js"></script>
+	<script src="../../libs/jquery-min.js"></script>
+  <script src="../../libs/jquery-ui/jquery-ui.min.js"></script>
+
+	<script src="../../libs/plotly-latest.min.js"></script>
+	<script type="text/x-mathjax-config">
+	  MathJax.Hub.Config({tex2jax: {inlineMath: [['$','$'], ['\\(','\\)']]}});
+	</script>
+	<script src="../../libs/MathJax-2.7.3/MathJax.js?config=TeX-AMS_CHTML"></script>
+
+	  <script src="../ControlSystems.js"></script>
+
+  <script src="../../libs/helpLib.js"></script>
+  <link rel="stylesheet" href="../../libs/helpLib.css">
+
+  <link rel="stylesheet" href="../../libs/jquery-ui/themes/smoothness/jquery-ui.css">
+
+
+
+	<style type="text/css">
+
+
+.vars {
+     font-size: 14px;
+}
+
+
+.code {
+     font-size: 18px;
+}
+
+.while {
+     color: #00ff00;
+}
+
+.ref {
+     color: #aaaaaa;
+}
+
+.out {
+     color: #cccccc;
+}
+
+.err {
+     color: #cccccc;
+}
+
+.ctrl {
+     color: #ccccff;
+}
+
+
+body {
+    user-select: none; /* supported by Chrome and Opera */
+   -webkit-user-select: none; /* Safari */
+   -khtml-user-select: none; /* Konqueror HTML */
+   -moz-user-select: none; /* Firefox */
+   -ms-user-select: none; /* Internet Explorer/Edge */
+}   
+
+
+	</style>
+
+
+</head>
+
+
+
+
+<body style="zoom: 100%;">
+
+
+<table width="100%">
+  <tr>
+    <td><h2>Discretization:</h2></td> <td align="right"> <a href='#' onclick="help()">How to use:</a> </td>
+  </tr>
+</table>
+
+
+<div id="helpDiv" style="display: none;" title="Discretization WebApp">
+
+This WebApp illustrates how the system discretization process works. It show the path of a signal going out of a computer and coming back in after passing through a plant. In this path it undergoes the conversion from digital to analog and analog to digital using the ZOH and FOH methods. <br>
+
+Use the slider to control the discretization period. You can click "step" or "play" to animate the discretization in time. Follow the plots to see the evolution. The switches illustrates the moment where each conversion is made.<br>
+
+
+<p>
+Press OK to see the function of each element in the WebApp.
+  </div>
+</p>
+</div>
+
+
+     <button onclick="playClicked()" id="buttonPlay">Play</button>
+
+     <button onclick="stepClicked()" id="buttonStep">Step</button>
+     
+     <button onclick="newInputClicked()" id="buttonNewinput">New input</button>
+
+
+     Method : <select id = "selectMethod" onchange="selectMethodChanged()">  
+          <option value="0">ZOH</option>
+          <option value="1">FOH</option>
+        </select>
+
+     System : <select id = "selectSystem" onchange="selectSystemChanged()">  
+          <option value="0">Slow 1st order</option>
+          <option value="1">Slow 2nd order</option>
+          <option value="2">Fast 1st order</option>
+          <option value="3">Fast 2nd order</option>
+          <option value="4">Faster 2nd order</option>
+          <option value="5">Slow 2nd order (high freq.)</option>
+        </select>
+
+
+     Input : <select id = "selectInput" onchange="selectInputChanged()">  
+          <option value="0">Random</option>
+          <option value="1">Step</option>
+          <option value="2">Sinusoid</option>
+          <option value="3">Pulse</option>
+        </select>
+
+
+    <input type="checkbox" id="checkboxLockPlots" name="checkboxLockPlots" value="0" onchange="lockPlotsClicked()" checked="">
+    <label for="checkboxLockPlots"> Lock Plots </label><br>
+    
+
+
+<input type="range" id="rangeT" oninput="sliderTChanged();" min="0.01" max="1" step="0.01" value="0.3" style="width: 600px"> <span id="spanT">0.3</span>s
+
+<br>
+<br>
+
+
+<table width="1200" border=0>
+
+
+	<tr>
+		<td colspan="3" align="center">
+			<img src="images/comp.png">
+		</td>
+	</tr>
+
+
+	<tr>
+		<td width="45%">
+			<div id="inputSignalDiscrete" style="height: 200px;"></div>
+		</td>
+		<td width="10%">
+			
+		</td>
+		<td width="45%">
+			<div id="outputSignalDiscrete" style="height: 200px;"></div>
+		</td>
+	</tr>
+
+
+	<tr>
+		<td width="45%" align="center">
+			<img src="images/switchON.png" id="imageSwitchInput" width="130">
+		</td>
+		<td width="10%">
+			
+		</td>
+		<td width="45%" align="center">
+			<img src="images/switchOFF.png" id="imageSwitchOutput" width="130">
+		</td>
+	</tr>
+
+
+	<tr>
+		<td width="45%">
+			<div id="inputSignalContinuous" style="height: 200px;"></div>
+		</td>
+		<td width="10%">
+			
+		</td>
+		<td width="45%">
+			<div id="outputSignalContinuous" style="height: 200px;"></div>
+		</td>
+	</tr>
+
+
+
+	<tr>
+		<td colspan="3" align="center">
+			<div style="position: relative;">
+				<span style="position: absolute; width: 160px; height: 90px; left: 535px; top: 35px; border: solid 0px; display: flex; justify-content: center; align-items: center; font-size:25px;" id="spanSystem">$\frac{1}{s+1}$</span>
+				<img src="images/system.png">
+			</div>
+		</td>
+	</tr>
+
+
+</table>
+
+
+
+</body>
+
+
+
+	<script src="../../libs/p5/p5.js"></script>
+	<script src="vars.js"></script>
+	<script src="utils.js"></script>
+	<script src="classes.js"></script>
+	<script src="sketch.js"></script>
+
+
+<script type="text/javascript">
+	
+
+  function help() {
+
+    $('#helpDiv').dialog({
+      height: 600,
+      width: 600,
+      modal: true,
+      buttons: {
+        Cancel: function() {
+          $('#helpDiv').dialog( "close" );
+        },
+        Ok : function() {
+          $('#helpDiv').dialog( "close" );
+
+
+
+
+
+
+
+
+
+    showHelp($('#buttonPlay'), '\
+    	Click here to start the animation without pause \
+    ',()=>{
+
+    showHelp($('#buttonStep'), ' \
+    	Click here to animate for just one integration step\
+    ',()=>{
+
+    showHelp($('#buttonNewinput'), '\
+    	Click here to generate a new input (if random)\
+	',()=>{
+
+    showHelp($('#selectMethod'), '\
+    	Select here the discretization method, Zero Order Holder or First Order Holder\
+    ',()=>{
+
+    showHelp($('#selectSystem'), ' \
+    	Click here to select the system you will discretize\
+    ',()=>{
+
+    showHelp($('#spanSystem'), ' \
+    	after selecting the system, it will be shown here\
+    ',()=>{
+
+    showHelp($('#selectInput'), '\
+    	Select the input you want to use \
+	',()=>{
+
+    showHelp($('#checkboxLockPlots'), '\
+    	Check here to lock the scale of the plots. <br><br> \
+    	This is useful to compare scales between input and output\
+    ',()=>{
+
+    showHelp($('#inputSignalDiscrete'), ' \
+    	Here you see the discrete input signal (samples) that will be used as input to the continuous system\
+    ',()=>{
+
+    showHelp($('#inputSignalContinuous'), '\
+    	This plot shows the continuous signal that actually will be fed to the system (select ZOH and FOH to see what is the difference) \
+	',()=>{
+
+    showHelp($('#outputSignalContinuous'), '\
+    	This is the actual plant output (still continuous)\
+    ',()=>{
+
+    showHelp($('#outputSignalDiscrete'), ' \
+    	Here you see the sampled version of the output.\
+    ',()=>{
+
+    });
+
+    }, null, 1);
+
+    },null, 1);
+
+    });
+
+    });
+
+    });
+
+    },null,1);
+
+    });
+
+    });
+
+    });
+
+    });
+
+    });
+
+
+
+
+        } // dialog
+      } 
+    });
+
+  }
+
+
+
+</script>
+
+
+</html>

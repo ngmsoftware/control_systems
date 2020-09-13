@@ -1,0 +1,247 @@
+<head>
+  <!-- Plotly.js -->
+  <script src="../libs/plotly-latest.min.js"></script>
+  <script src="../libs/jquery-min.js"></script>
+  <script src="ControlSystems.js"></script>
+  <script src="../libs/jquery-ui/jquery-ui.min.js"></script>
+
+  <link rel="stylesheet" href="../libs/jquery-ui/themes/smoothness/jquery-ui.css">
+
+  <script src="../libs/helpLib.js"></script>
+  <link rel="stylesheet" href="../libs/helpLib.css">
+
+<style >
+  
+body {
+    user-select: none; /* supported by Chrome and Opera */
+   -webkit-user-select: none; /* Safari */
+   -khtml-user-select: none; /* Konqueror HTML */
+   -moz-user-select: none; /* Firefox */
+   -ms-user-select: none; /* Internet Explorer/Edge */
+}   
+  
+
+</style>
+
+
+</head>
+
+<body>
+
+
+
+<table width="100%">
+  <tr>
+    <td><h2>Discrete oscillations:</h2></td> <td align="right"> <a href='#' id= 'helpLink' onclick="help()">How to use:</a> </td>
+  </tr>
+</table>
+
+
+<div id= "helpDiv" style="display: none;" title="Discrete Oscilations WebApp">
+This WebApp aims to illustrate how discrete oscillations works.<br>
+Use the slider to select a frequency that will correspond to an angle illustrated in the first plot. As you slide, the angle increases / decreases and the plot to the right updates in real time with a discrete sinusoid corresponding to that selected frequency. The first plot also shows the multiple of the angles that will form the sinusoidal signal.
+<p>
+Press OK to see the function of each element in the WebApp.
+  </div>
+
+<input type="range" id="rangeFrequency" oninput="computeOutput();" min="0" max="720" step="1" value="0" style="width: 800px"> <span id="spanFreq">0.0</span>
+
+<table>
+  <tr>
+    <td>
+      <div id="freqDiv" style="width:300px; height:300px"></div>
+    </td>
+    <td>
+      <div id="responseDiv" style="width:900px;height:300px"></div>
+    </td>
+  </tr>
+</table>
+
+
+  <script>
+
+
+
+
+rangeFrequency = document.getElementById('rangeFrequency');
+spanFreq = document.getElementById('spanFreq');
+
+angleRad = 0.2;
+
+NPoints = 100;
+var layoutPoles = {
+    title: { text:'angles', font : {size:14} },
+        margin: {
+          l: 25,
+          r: 25,
+          b: 25,
+          t: 25,
+        },
+        yaxis: {
+          scaleanchor:"x", scaleratio:1
+        },
+
+        showlegend: false,
+      };
+var tracesFreq = [{
+  x: [],
+  y: [],
+  mode: 'lines',
+  line: {color: '#d0d0d0'},
+},{
+  x: [],
+  y: [],
+  mode: 'lines',
+  line: {color: '#000000'},
+},{
+  x: [0,1],
+  y: [0,0],
+  mode: 'lines',
+  line: {color: '#3060f0'},
+},{
+  x: [],
+  y: [],
+  mode: 'lines',
+  line: {color: '#306050'},
+},{
+  x: [0.2],
+  y: [0.0],
+  mode: 'text',
+  text: ['angle'],
+  textposition: 'top',
+  type: 'scatter'
+}];
+
+for (var i = 0; i < NPoints+1; i++) {
+  var x = Math.sin(2*i*Math.PI/NPoints);
+  var y = Math.cos(2*i*Math.PI/NPoints);
+  tracesFreq[1].x.push(x);
+  tracesFreq[1].y.push(y);
+  tracesFreq[3].x.push(0.0);
+  tracesFreq[3].y.push(0.0);
+}
+var gdPoles = document.getElementById('freqDiv');
+
+Plotly.plot('freqDiv', tracesFreq, layoutPoles,  {displayModeBar: false, staticPlot:true});
+
+
+
+
+
+
+
+
+NTime = 80;
+discreteTimePlot = new TimePlot('responseDiv', NTime, 0, 10, -1.1, 1.1, discrete = 1, 0.01, 20, 10, 'Oscilations');
+discreteTimePlot.init();
+
+
+function computeOutput() {
+
+  var  y1 = 0.0;
+  var  y2 = 0.0;
+  var x = 1;
+  var freq = rangeFrequency.value*Math.PI/180.0;
+
+  spanFreq.innerHTML = rangeFrequency.value + String.fromCharCode(176);
+
+  tracesFreq[2].x[1] = Math.cos(freq);
+  tracesFreq[2].y[1] = Math.sin(freq);
+
+  tracesFreq[4].x[0] = Math.cos(freq/2)*0.25;
+  tracesFreq[4].y[0] = Math.sin(freq/2)*0.25;
+
+  for (var i = 0; i < NPoints+1; i++) {
+    var f = i*2*Math.PI/NPoints;
+
+    if (f<freq) {
+      tracesFreq[3].x[i] = Math.cos(f)*angleRad;
+      tracesFreq[3].y[i] = Math.sin(f)*angleRad;
+    } else {
+      tracesFreq[3].x[i] = null;
+      tracesFreq[3].y[i] = null;
+    }
+
+  }
+
+  tracesFreq[0].x = [];
+  tracesFreq[0].y = [];
+  if (freq > 0.1) {
+    var angles = 0.0;
+    while (angles < 2*Math.PI) {
+      angles += freq;
+
+      if (angles < 2*Math.PI) {
+        tracesFreq[0].x.push(0);
+        tracesFreq[0].x.push(Math.cos(angles));
+        tracesFreq[0].x.push(null);
+        tracesFreq[0].y.push(0);
+        tracesFreq[0].y.push(Math.sin(angles));
+        tracesFreq[0].y.push(null);
+      }
+    }
+  }
+
+  discreteTimePlot.Y[i] = [];
+  
+  for (var i = 0; i < discreteTimePlot.Y.length ; i++) {
+      var y = Math.cos(freq*i);
+
+      discreteTimePlot.Y[i] = y;
+  }
+
+
+  discreteTimePlot.update();
+  Plotly.redraw('freqDiv');
+}
+
+
+
+
+computeOutput();
+
+
+
+  function help() {
+
+    $('#helpDiv').dialog({
+      height: 600,
+      width: 600,
+      modal: true,
+      buttons: {
+        Cancel: function() {
+          $('#helpDiv').dialog( "close" );
+        },
+        Ok : function() {
+          $('#helpDiv').dialog( "close" );
+
+    showHelp($('#rangeFrequency'), 'Select the frequency that you want on this slider.',()=>{
+
+      showHelp($('#freqDiv'), 'Visualize the corresponding angle here',()=>{
+
+        showHelp($('#responseDiv'), 'The plot for that frequency will be shown here...',()=>{
+
+          
+          
+        });
+        
+      });
+
+    });
+
+
+
+        } // dialog
+      } 
+    });
+
+
+  }
+
+
+
+
+
+  </script>
+</body>
+

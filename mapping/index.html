@@ -1,0 +1,904 @@
+<head>
+  <script src="../../libs/plotly-latest.min.js"></script>
+  <script src="../../libs/jquery-min.js"></script>
+  <script src="../../libs/jquery-ui/jquery-ui.min.js"></script>
+  <script src="../ControlSystems.js"></script>
+  <script type="text/x-mathjax-config">
+    MathJax.Hub.Config({tex2jax: {inlineMath: [['$','$'], ['\\(','\\)']]}});
+  </script>
+  <script src="../../libs/MathJax-2.7.3/MathJax.js?config=TeX-AMS_CHTML"></script>
+  <script src="../../libs/p5/p5.js"></script>
+  <link rel="stylesheet" href="../../libs/jquery-ui/themes/smoothness/jquery-ui.css">
+
+  <script src="../../libs/helpLib.js"></script>
+  <link rel="stylesheet" href="../../libs/helpLib.css">
+
+
+  <style type="text/css">
+    
+body {
+    user-select: none; /* supported by Chrome and Opera */
+   -webkit-user-select: none; /* Safari */
+   -khtml-user-select: none; /* Konqueror HTML */
+   -moz-user-select: none; /* Firefox */
+   -ms-user-select: none; /* Internet Explorer/Edge */
+}   
+
+  </style>
+</head>
+
+<body>
+
+<table width="100%">
+  <tr>
+    <td><h2>s-z mapping:</h2></td> <td align="right"> <a href='#' onclick="help();">How to use:</a> </td>
+  </tr>
+</table>
+
+<div id="helpDiv" style="display: none;" title="S-Z Mapping WebApp">
+	<p>
+In this WebApp, you can visualize the effects of different mappings between the S plane and the Z plane. <br>
+You can place and move singularities in the S diagram (left) and see its mapping in the Z diagram (right). You can also place line segments corresponding the sets of singularities like a line with constant real part.<br>
+You can also play with a second order system (bellow) and see how the discretized system functions. Move the poles to change the system and compare the different methods of discretization.
+
+<p>
+Press OK to see the function of each element in the WebApp.
+  </div>
+</p>
+</div>
+
+
+
+     Methods: <select id = "selectMethod" onchange="selectMethod_changed()">  
+          <option value="0" selected>ideal</option>
+     	<optgroup> direct map </optgroup>
+          <option value="1">Tustin</option>
+          <option value="2">Forward</option>
+          <option value="3">Backward</option>
+     	<optgroup> indirect map </optgroup>
+          <option value="4">Impulse</option>
+          <option value="5">ZOH</option>
+          <option value="6">matched</option>
+        </select>
+
+
+        <button id= "buttonAddPoleSet" onclick="addPoleSetClicked()">Add set</button>
+
+     Line Sets: <select id = "selectLineSet" onchange="selectMethod_changed()">  
+          <option value="0" selected>Real constant</option>
+          <option value="1">Imaginary constant</option>
+          <option value="2">Phase constant</option>
+        </select>
+
+		<input type="text" id="textSetValue" size = 4 value="-1">    
+
+     Input: <select id = "selectInput" onchange="selectInput_changed()">  
+          <option value="0" selected>Impulse</option>
+          <option value="1">Step</option>
+          <option value="2">PNoise</option>
+        </select>
+
+
+        <button id="buttonAddGrid" onclick="addGrid();">Add grid</button>
+
+<br>
+
+<table>
+
+	<tr>
+		<td id="tdZoom">
+			Zoom at -1 <br>
+			<input type="range" id="rangeZoom" oninput="rangeZoomChanged();" min="0.0" max="1" step="0.01" value="0.5" style="width: 200px"> 
+
+		</td>
+		<td id="tdT">
+			Sampling time : T = <span id="spanT">0.0</span><br>
+			<input type="range" id="rangeT" oninput="rangeTChanged();" min="0.01" max="3" step="0.01" value="0.5" style="width: 400px"> 
+		</td>
+		<td id="tdW0">
+			Prewarp frequency : W0 = <span id="spanW0">0.0</span><br>
+			<input type="range" id="rangeW0" oninput="rangeW0Changed();" min="0.001" max="2" step="0.001" value="0.001" style="width: 200px"> 
+		</td>
+
+	</tr>
+
+</table>
+
+
+  <table >
+  	<tr>
+  		<td>
+			<div id="SPlaneDiv" style="width:500px;height:400px;"></div>
+		</td>
+		<td>
+			<div id="ZPlaneDiv" style="width:500px;height:400px;"></div>
+		</td>
+	</tr>
+
+
+
+
+  	<tr>
+  		<td colspan="2">
+  			<table width="100">
+  				<tr>
+		  			<td>
+						<div id="plantDiv" style="width:200px;height:200px;"></div>
+					</td>
+			  		<td>
+						<div id="outputDiv" style="width:1000px;height:200px;"></div>
+					</td>
+				</tr>
+  			</table>
+		</td>
+	</tr>
+
+
+</table>
+
+
+
+
+  <script src="compute.js">	</script>
+
+  <script>
+
+  	let gridResolution = 10;
+  	let rangeS = [-3, 3];
+  	let setResolution = 500;
+  	let hasGrid = false;
+
+  	method = 0;
+  	T = 0.5;
+  	W0 = 0.001;
+  	poleSets = [];
+  	poleSetsColors = [];
+  	inputFuncC = stepInputC;
+  	inputFuncD = stepInputD;
+  	input = 0;
+
+  	startSetsIndexAtRLocus = 0;
+
+  	systemC = {num : [2.1, 0.3], den : [1, 2, 8]};
+	systemD = {num: [ 0.319, - 0.2753], den : [1, -0.7859 , 0.3679]};
+
+
+  	outputPlot = createOutputPlot('outputDiv');
+
+	//
+	//  Create pole diagram
+	//
+
+	SPolesDiagram = new PolesDiagram('SPlaneDiv',0, false);
+    SPolesDiagram.poles = [];
+    SPolesDiagram.zeros = [];
+	SPolesDiagram.onSingularityMove = singularityMove;
+	SPolesDiagram.onSingularityAdd = singularityAdd;
+	SPolesDiagram.onSingularityDel = singularityDel;
+	SPolesDiagram.onSingularitySelected = singularitySelected;
+	SPolesDiagram.onSingularityDeselected = singularityDeselected;
+	SPolesDiagram.maxPoles = 2000;
+	SPolesDiagram.tracePoles[0].marker.size = 10;
+	SPolesDiagram.tracePoles[0].marker.color = '#0';
+	SPolesDiagram.tracePoles[0].marker.symbol = 'd';
+	SPolesDiagram.tracePoles[1].marker.size = 10;
+	SPolesDiagram.tracePoles[1].marker.color = '#0';
+	SPolesDiagram.tracePoles[1].marker.symbol = 'd';
+
+	SPolesDiagram.traceZeros[0].marker.size = 10;
+	SPolesDiagram.traceZeros[0].marker.color = '#0';
+	SPolesDiagram.traceZeros[0].marker.symbol = 'd';
+	SPolesDiagram.traceZeros[1].marker.size = 10;
+	SPolesDiagram.traceZeros[1].marker.color = '#0';
+	SPolesDiagram.traceZeros[1].marker.symbol = 'd';
+
+
+	SPolesDiagram.traceRlocus = [];
+
+	SPolesDiagram.traceGrid = [];
+
+
+	ZPolesDiagram = new PolesDiagram('ZPlaneDiv',1, true);
+    ZPolesDiagram.poles = [];
+    ZPolesDiagram.zeros = [];
+	ZPolesDiagram.maxPoles = 2000;
+	ZPolesDiagram.maxPoles = 2000;
+	ZPolesDiagram.tracePoles[0].marker.size = 5;
+	ZPolesDiagram.tracePoles[0].marker.color = '#0';
+	ZPolesDiagram.tracePoles[0].marker.symbol = 'd';
+	ZPolesDiagram.tracePoles[1].marker.size = 5;
+	ZPolesDiagram.tracePoles[1].marker.color = '#0';
+	ZPolesDiagram.tracePoles[1].marker.symbol = 'd';
+
+	ZPolesDiagram.traceZeros[0].marker.size = 5;
+	ZPolesDiagram.traceZeros[0].marker.color = '#0';
+	ZPolesDiagram.traceZeros[0].marker.symbol = 'd';
+	ZPolesDiagram.traceZeros[1].marker.size = 5;
+	ZPolesDiagram.traceZeros[1].marker.color = '#0';
+	ZPolesDiagram.traceZeros[1].marker.symbol = 'd';
+
+	ZPolesDiagram.traceRlocus = [];
+
+
+	// create plant diagram
+	plantDiagram = new PolesDiagram('plantDiv',0, true);
+	plantDiagram.addPoles(-1,-1);
+	plantDiagram.addZeros(-2);
+	plantDiagram.onSingularityMove = singularityMove;
+   	plantDiagram.polesZerosRange.continuous.x = [-4, 4];
+   	plantDiagram.polesZerosRange.continuous.x = [-4, 4];
+
+
+
+
+   	function reactPlot() {
+		Plotly.react('SPlaneDiv', SPolesDiagram.tracePoles.concat(SPolesDiagram.traceZeros.concat(SPolesDiagram.traceStable.concat(SPolesDiagram.traceSelection.concat(SPolesDiagram.traceRlocus)))),SPolesDiagram.layout,  {displayModeBar: false, staticPlot:true});
+		Plotly.react('ZPlaneDiv', ZPolesDiagram.tracePoles.concat(ZPolesDiagram.traceZeros.concat(ZPolesDiagram.traceStable.concat(ZPolesDiagram.traceSelection.concat(ZPolesDiagram.traceRlocus)))),ZPolesDiagram.layout,  {displayModeBar: false, staticPlot:true});
+   	}
+
+
+
+
+   	function addGrid() {
+
+   		// since grid os not real time called, redo all the trace lines (call react on the diagrams)
+
+		SPolesDiagram.traceRlocus.splice(0, startSetsIndexAtRLocus);
+		ZPolesDiagram.traceRlocus.splice(0, startSetsIndexAtRLocus);
+
+		startSetsIndexAtRLocus = 0;
+
+
+   		// this is to force the grid always use T = 1.05.
+   		// after call compute, T can be the restored (see end of the function)
+   		let TBack = T;
+
+   		T = 1.05;
+
+
+   		let resolution = 150;
+
+   		// grid lines HAVE to be the first rlocus traces... 
+   		// so, if there is already some lines, back them up to add them later.
+   		let currentLineSetS = SPolesDiagram.traceRlocus;
+   		let currentLineSetZ = ZPolesDiagram.traceRlocus;
+
+   		SPolesDiagram.traceRlocus = [];
+   		ZPolesDiagram.traceRlocus = [];
+
+
+   		var reso = gridResolution;
+   		var colorNeg = 'rgba(0,0,255,0.05)';
+
+
+		for (var i = 0; i < reso; i++) {
+			let resPosX = rangeS[0] + (-rangeS[0]*i/reso);
+			
+			addPoleSet(0, resPosX, [-3, 3], colorNeg, resolution);
+		}
+
+
+   		reso = 2*gridResolution;
+		for (var i = 0; i < reso; i++) {
+			let resPosY = rangeS[0] + (rangeS[1]-rangeS[0])*i/reso;
+			
+			addPoleSet(1, resPosY, [-3, 0], colorNeg, resolution);
+		}
+
+
+   		reso = gridResolution/2;
+		for (var i = 0; i < reso; i++) {
+			let resPosX = rangeS[0] + (-rangeS[0]*i/reso);
+			
+			addPoleSet(2, tan(resPosX/2.25), [-3, 0], colorNeg, resolution);
+		}
+
+
+
+
+
+
+   		var colorPos = 'rgba(255,0,0,0.05)';
+
+
+   		reso = 2*gridResolution;
+		for (var i = 0; i < reso; i++) {
+			let resPosY = rangeS[0] + (rangeS[1]-rangeS[0])*i/reso;
+			
+			addPoleSet(1, resPosY, [0, 3], colorPos, resolution);
+		}
+
+
+   		reso = gridResolution/2;
+		for (var i = 0; i < reso; i++) {
+			let resPosX = rangeS[0] + (-rangeS[0]*i/reso);
+			
+			addPoleSet(2, tan(resPosX/2.25), [0, 3], colorPos, resolution);
+		}
+
+
+		reactPlot();
+
+	  	compute();
+
+	  	// this HAVE TO BE placed here to make the startIndex exactly one index after the last grid trace (so we can skip the computation for the grid lines)
+		startSetsIndexAtRLocus = SPolesDiagram.traceRlocus.length;
+
+
+   		SPolesDiagram.traceRlocus = SPolesDiagram.traceRlocus.concat(currentLineSetS);
+   		ZPolesDiagram.traceRlocus = ZPolesDiagram.traceRlocus.concat(currentLineSetZ);
+
+
+	  	// restoring original T (see begining of the function)
+	  	T = TBack;
+
+		reactPlot();
+
+	  	compute();
+
+	  	hasGrid = true;
+  	}
+
+
+
+
+	function singularityMove(p) {
+		compute();
+	}
+	function singularityAdd(p) {
+		compute();
+	}
+	function singularityDel(p) {
+		compute();
+	}
+	function singularitySelected(p) {
+		compute();
+	}
+	function singularityDeselected(p) {
+		compute();
+	}
+
+
+	function addPoleSetClicked() {
+		let lineSet = parseInt($('#selectLineSet').val());
+		let lineSetValue = parseFloat($('#textSetValue').val());
+
+		let color = "#"+((1<<24)*Math.random()|0).toString(16);
+
+		addPoleSet(lineSet, lineSetValue, rangeS, color, setResolution);
+
+		reactPlot();
+
+	  	compute();
+	}
+
+
+	function addPoleSet(lineSet, lineSetValue, thisRange, color, resolution) {
+
+		let nextIndex = SPolesDiagram.traceRlocus.length;
+
+
+		SPolesDiagram.traceRlocus.push({x: [], y: [],mode: 'lines',	line : { width : 2, color:color}, });
+		ZPolesDiagram.traceRlocus.push({x: [], y: [],mode: 'lines',	line : { width : 2, color:color}, });
+
+		SPolesDiagram.traceRlocus.push({x: [], y: [],mode: 'lines',	line : { width : 2, color:color}, });
+		ZPolesDiagram.traceRlocus.push({x: [], y: [],mode: 'lines',	line : { width : 2, color:color}, });
+
+		var w = thisRange[0];
+		for (var i = 0; i < resolution; i++) {
+			switch (lineSet) {
+				case 0:
+					SPolesDiagram.traceRlocus[nextIndex].x.push(lineSetValue);
+					SPolesDiagram.traceRlocus[nextIndex].y.push(w);
+
+					SPolesDiagram.traceRlocus[nextIndex+1].x.push(lineSetValue);
+					SPolesDiagram.traceRlocus[nextIndex+1].y.push(w);
+					break;
+				case 1:
+					SPolesDiagram.traceRlocus[nextIndex].x.push(w);
+					SPolesDiagram.traceRlocus[nextIndex].y.push(lineSetValue);
+
+					SPolesDiagram.traceRlocus[nextIndex+1].x.push(w);
+					SPolesDiagram.traceRlocus[nextIndex+1].y.push(-lineSetValue);
+					break;
+				case 2:
+					SPolesDiagram.traceRlocus[nextIndex].x.push(w);
+					SPolesDiagram.traceRlocus[nextIndex].y.push(lineSetValue*w);
+
+					SPolesDiagram.traceRlocus[nextIndex+1].x.push(w);
+					SPolesDiagram.traceRlocus[nextIndex+1].y.push(-lineSetValue*w);
+					break;
+
+			}
+			w += (thisRange[1]-thisRange[0])/resolution;
+		}
+
+
+	}
+/*
+	function addPoleSet2() {
+
+		let lineSet = parseInt($('#selectLineSet').val());
+		let lineSetValue = parseFloat($('#textSetValue').val());
+
+		let N = 50;
+		var newSet = [];
+
+		var w = -3;
+		for (var i = 0; i < N; i++) {
+			switch (lineSet) {
+				case 0:
+					newSet.push(new Singularity(lineSetValue, w));
+					break;
+				case 1:
+					newSet.push(new Singularity(w, lineSetValue));
+					break;
+				case 2:
+					newSet.push(new Singularity(w, lineSetValue*w));
+					break;
+
+			}
+			w += 6/N;
+		}
+
+	  	poleSets.push(newSet);
+	  	poleSetsColors.push("#"+((1<<24)*Math.random()|0).toString(16));
+
+
+		// ZPolesDiagram.traceRlocus = [];
+		// SPolesDiagram.traceRlocus = [];
+
+//		fillGrid();
+
+		startSetsIndexAtRLocus = SPolesDiagram.traceRlocus.length;
+
+		for (var i = 0; i < poleSets.length; i++) {
+			SPolesDiagram.traceRlocus.push({x: [], y: [],mode: 'lines',	line : { width : 2, color:poleSetsColors[i]}, });
+			SPolesDiagram.traceRlocus.push({x: [], y: [],mode: 'lines',	line : { width : 2, color:poleSetsColors[i]}, });
+			ZPolesDiagram.traceRlocus.push({x: [], y: [],mode: 'lines',	line : { width : 2, color:poleSetsColors[i]}, });
+			ZPolesDiagram.traceRlocus.push({x: [], y: [],mode: 'lines',	line : { width : 2, color:poleSetsColors[i]}, });
+		}
+
+		reactPlot();
+
+	  	compute();
+	}
+*/
+
+	function selectInput_changed() {
+    	input = parseInt($('#selectInput')[0].value);
+
+    	compute();
+	}
+
+
+    function selectMethod_changed() {
+    	method = parseInt($('#selectMethod')[0].value);
+
+    	addGrid();
+    }
+
+    function rangeTChanged() {
+    	T = parseFloat($('#rangeT').val());
+
+		$('#spanT').html( T );
+
+		compute();
+    }
+
+
+    function rangeW0Changed() {
+    	W0 = parseFloat($('#rangeW0').val());
+
+		$('#spanW0').html( W0 );
+
+		compute();
+    }
+
+
+    function rangeZoomChanged() {
+    	value = $('#rangeZoom').val();
+
+
+    	ZPolesDiagram.polesZerosRange.discrete.x = [map(value, 0, 1, -3, 0.99), map(value, 0, 1, 2, 1.01)];
+    	ZPolesDiagram.polesZerosRange.discrete.y = [map(value, 0, 1, -2, -0.01), map(value, 0, 1, 2, 0.01)];
+
+    	compute();
+    }
+
+
+
+	function init() {
+
+//		fillGrid();
+
+//		reactPlot();
+
+		compute();
+	}
+
+
+
+
+	function computeOutput(method) {
+
+		var funcMethod = (b1, b0, a1, a0, h) => 0;
+
+		switch (method) {
+			case 1:
+				funcMethod = discretizeTustin;
+				break;
+			case 2:
+				funcMethod = discretizeForward;
+				break;
+			case 3:
+				funcMethod = discretizeBackward;
+				break;
+			case 4:
+				funcMethod = discretizeImpulse;
+				break;
+			case 5:
+				funcMethod = discretizeZOH;
+				break;
+			case 6:
+				funcMethod = discretizeMatched;
+				break;
+		}
+
+
+		inputFuncC = (a, b) => 0;
+		inputFuncD = (a, b) => 0;
+
+		switch (input) {
+			case 0:
+				inputFuncC = impulseInputC;
+				inputFuncD = impulseInputD;
+			break
+			case 1:
+				inputFuncC = stepInputC;
+				inputFuncD = stepInputD;
+			break
+			case 2:
+				inputFuncC = pnoiseInputC;
+				inputFuncD = pnoiseInputD;
+			break
+		}
+
+		res = funcMethod(systemC.num[0], systemC.num[1], systemC.den[1], systemC.den[2], T);
+
+//		console.log(res);
+
+		systemD.num = [res[0], res[1], res[2]];
+		systemD.den = [res[3], res[4], res[5]];
+
+
+		// plot continuous output
+
+		outputPlot.traces[0].x = [];
+		outputPlot.traces[0].y = [];
+
+		var stateC = [0, 0];
+		let dt = 0.01;
+
+		for (var t = 0.0; t < 10.0; t+=dt) {
+			resC = simulateSystem(stateC, systemC.num, systemC.den,  inputFuncC(t,dt) , dt);
+			stateC = resC[0];
+
+			outputPlot.traces[0].x.push(t);
+			outputPlot.traces[0].y.push(resC[1]);
+		}
+
+
+
+		// plot discrete output
+
+		outputPlot.traces[1].x = [];
+		outputPlot.traces[1].y = [];
+		outputPlot.traces[2].x = [];
+		outputPlot.traces[2].y = [];
+
+		var stateD = [0, 0];
+
+		for (var n = 0; n < 10.0/T; n++) {
+
+			resD = simulateSystem(stateD, systemD.num, systemD.den, inputFuncD(n, T), dt, 1);
+			stateD = resD[0];
+
+			outputPlot.traces[1].x.push(n*T);
+			outputPlot.traces[1].y.push(resD[1]);
+
+			outputPlot.traces[1].x.push((n+1)*T);
+			outputPlot.traces[1].y.push(resD[1]);
+
+
+			outputPlot.traces[2].x.push(n*T);
+			outputPlot.traces[2].y.push(resD[1]);
+
+		}
+
+		Plotly.redraw('outputDiv');
+	}
+
+
+
+
+
+	function compute() {
+
+		let den = Polynomial.rootsToCoefs(plantDiagram.getAllPoles());
+		let num = Polynomial.rootsToCoefs(plantDiagram.getAllZeros());
+
+		systemC.num = num;
+		systemC.den = den;
+
+
+		// get system poles (and compute coefficients)
+
+		var SPoles = SPolesDiagram.getAllPoles();
+		var SZeros = SPolesDiagram.getAllZeros();
+
+		// var Sa = Polynomial.rootsToCoefs(SPoles);
+		// var Sb = Polynomial.rootsToCoefs(SZeros);
+
+
+		ZPolesDiagram.poles = [];
+		ZPolesDiagram.zeros = [];
+
+
+		var discretization;
+
+		switch (method) {
+			case 0:
+				discretization = ideal;
+			break;
+			case 1:
+				discretization = tustin;
+			break;
+			case 2:
+				discretization = forward;
+			break;
+			case 3:
+				discretization = backward;
+			break;
+			case 4:
+				discretization = ideal;
+			break;
+			case 5:
+				discretization = ideal;
+			break;
+			case 6:
+				discretization = ideal;
+			break;
+
+		}
+
+
+		for (var i = SPoles.length - 1; i >= 0; i--) {
+
+			var newPole;
+
+			if (method >= 4) {
+				newPole = discretization(SPoles[i], T, num);
+			} else 
+				newPole = discretization(SPoles[i], T, W0);
+
+
+			ZPolesDiagram.poles.push(newPole);
+		}
+
+		for (var i = SZeros.length - 1; i >= 0; i--) {
+
+			if (method >= 4) {
+				newZero = discretization(SPoles[i], T, num);
+			} else 
+				newZero = discretization(SPoles[i], T, W0);
+
+			ZPolesDiagram.zeros.push(newZero);
+		}
+
+
+
+
+		for (var i = startSetsIndexAtRLocus; i < ZPolesDiagram.traceRlocus.length; i++) {
+			ZPolesDiagram.traceRlocus[i].x = [];
+			ZPolesDiagram.traceRlocus[i].y = [];
+		}
+
+
+		// configure poleSets (lines in the planes)
+
+		for (var i = startSetsIndexAtRLocus; i < SPolesDiagram.traceRlocus.length; i++) {
+			// let set = poleSets[i];
+
+			// for (var j = 0; j < set.length; j++) {
+			// 	let Ssing = set[j];
+			// 	if (method >= 4) {
+			// 		ZSing = discretization(Ssing, T, num);
+			// 	} else 
+			// 		ZSing = discretization(Ssing, T, W0);
+
+			for (var j = 0; j < SPolesDiagram.traceRlocus[i].x.length; j++) {
+				let SSing = new Singularity(SPolesDiagram.traceRlocus[i].x[j], SPolesDiagram.traceRlocus[i].y[j]);
+
+				if (SPolesDiagram.traceRlocus[i].x[j] != null) {
+
+				 	if (method >= 4) {
+				 		ZSing = discretization(SSing, T, num);
+				 	} else 
+				 		ZSing = discretization(SSing, T, W0);
+
+			 	} else {
+
+			 		ZSing = {real: null, imag: null};
+
+			 	}
+
+				// SPolesDiagram.traceRlocus[i].x.push(Ssing.real);
+				// SPolesDiagram.traceRlocus[i].y.push(Ssing.imag);
+
+
+				ZPolesDiagram.traceRlocus[i].x.push(ZSing.real);
+				ZPolesDiagram.traceRlocus[i].y.push(ZSing.imag);
+			
+
+				// SPolesDiagram.traceRlocus[2*i+1].x.push(Ssing.real);
+				// SPolesDiagram.traceRlocus[2*i+1].y.push(-Ssing.imag);
+
+
+				// ZPolesDiagram.traceRlocus[2*i+1].x.push(ZSing.real);
+				// ZPolesDiagram.traceRlocus[2*i+1].y.push(-ZSing.imag);
+			}
+
+		}
+
+
+		ZPolesDiagram.update();
+		// SPolesDiagram.update();
+		plantDiagram.update();
+
+		computeOutput(method);
+
+	}
+
+
+
+
+
+
+function setup() {
+	noCanvas();
+}
+
+
+
+
+
+
+
+
+
+
+
+
+  function help() {
+
+
+    $('#helpDiv').dialog({
+      height: 600,
+      width: 600,
+      modal: true,
+      buttons: {
+        Cancel: function() {
+          $('#helpDiv').dialog( "close" );
+        },
+        Ok : function() {
+          $('#helpDiv').dialog( "close" );
+
+
+
+
+
+
+
+
+
+    showHelp($('#selectMethod'), '\
+   	Select here the discretization method you want to play with \
+   	',()=>{
+
+    showHelp($('#buttonAddPoleSet'), ' \
+    Click here to add a pole set (line) in the S domain to see how this line maps to the Z plane \
+    ',()=>{
+
+    showHelp($('#selectLineSet'), '\
+   	Use this box select the kind of line you want to add (constrain in the S domain) \
+   	' ,()=>{
+
+    showHelp($('#textSetValue'), '\
+   	Use this box to set the value of the line you want to add <br> \
+   	For real value and imaginary value constrain, this will be the value of the constrain. <br> \
+   	For the phase constrain, this will be the tangent of the line \
+   	',()=>{
+
+    showHelp($('#selectInput'), '\
+   	Here you can select the input to be simulated for the test system \
+   	',()=>{
+
+    showHelp($('#buttonAddGrid'), '\
+    Click here to add a full grid of likes that will map S to Z. Those lines will be static and will serve only as a reference for the interactive lines \
+    ',()=>{
+
+    showHelp($('#tdZoom'), '\
+    Use this scroll to zoom in at (-1,0) in the Z plane. This is useful to compare the mapping when the sampling time is small \
+    ',()=>{
+              
+    showHelp($('#tdT'), '\
+    This is the main scroll. Use it to change the sampling time \
+    ',()=>{
+              
+
+    showHelp($('#tdW0'), '\
+    This scroll sets the prewarping frequency used in the Tustin method. Leave at minimum to use no prewarping. \
+    ',()=>{
+              
+    showHelp($('#SPlaneDiv'), '\
+    This is the S plane. Here you can place singularities and lines. \
+    ',()=>{
+
+    showHelp($('#ZPlaneDiv'), '\
+    This is the Z plane. Here you will see the mapped objects that you placed in the S plane. \
+    ',()=>{
+              
+    showHelp($('#plantDiv'), '\
+    This is the S plane for the plant. You can move the poles and zero to change the output. \
+    ',()=>{
+              
+    showHelp($('#outputDiv'), '\
+    This is the output plot. You can see the continuous output and discrete one at the same time. \
+    ',()=>{
+              
+
+    }, null, 1);
+
+    }, null, 1);
+
+    });
+
+    });
+
+    });
+
+    });
+      
+    });
+
+    });
+
+    });
+      
+    });
+
+    });
+
+    });
+
+    });
+
+
+
+
+        } // dialog
+      } 
+    });
+
+
+  }
+
+
+
+init();
+
+
+  </script>
+</body>
+

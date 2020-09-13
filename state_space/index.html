@@ -1,0 +1,790 @@
+<head>
+  <script src="../../libs/plotly-latest.min.js"></script>
+  <script src="../../libs/jquery-min.js"></script>
+  <script src="../../libs/jquery-ui/jquery-ui.min.js"></script>
+  <script src="../ControlSystems.js"></script>
+  <script type="text/x-mathjax-config">
+    MathJax.Hub.Config({tex2jax: {inlineMath: [['$','$'], ['\\(','\\)']]}});
+  </script>
+  <script src="../../libs/MathJax-2.7.3/MathJax.js?config=TeX-AMS_CHTML"></script>
+  <script src="../../libs/p5/p5.js"></script>
+  <link rel="stylesheet" href="../../libs/jquery-ui/themes/smoothness/jquery-ui.css">
+
+  <script src="../../libs/helpLib.js"></script>
+  <link rel="stylesheet" href="../../libs/helpLib.css">
+
+
+  <style type="text/css">
+    
+body {
+    user-select: none; /* supported by Chrome and Opera */
+   -webkit-user-select: none; /* Safari */
+   -khtml-user-select: none; /* Konqueror HTML */
+   -moz-user-select: none; /* Firefox */
+   -ms-user-select: none; /* Internet Explorer/Edge */
+}   
+
+  </style>
+</head>
+
+<body>
+
+<table width="100%">
+  <tr>
+    <td><h2>State Space:</h2></td> <td align="right"> <a href='#' onclick="help();">How to use:</a> </td>
+  </tr>
+</table>
+
+<div id="helpDiv" style="display: none;" title="State Space WebApp">
+	<p>
+This WebApp aims to illustrate how the state space representation works. <br>
+
+Use the slider to change the input amplitude (for a step input). <br>
+Drag the poles or the zero in the pole diagram to change the vector field corresponding to the system in real time.<br>
+Click on the vector field to add a "particle". Left click adds a single particle, right click adds a source.<br>
+Edit the state space equations to change the vector field (and poles).<br>
+
+<p>
+Press OK to see the function of each element in the WebApp.
+  </div>
+</p>
+</div>
+
+
+     System domain: <select id = "selectDomain" onchange="selectDomain_changed()">  
+          <option value="1">Discrete</option>
+          <option value="0">Continuous</option>
+        </select>
+
+        <button onclick="resetClicked()">Reset</button>
+
+
+     Examples: <select id = "selectCases" onchange="selectCases_changed()">  
+          <option value=""></option>
+          <option value="1">Decaying oscillation</option>
+          <option value="2">Pure oscillations</option>
+          <option value="3">Simple dumped</option>
+          <option value="4">1st order (non controllable)</option>
+          <option value="5">1st order (non observable)</option>
+        </select>
+
+     Canoncal Form: <select id = "selectCanonical" onchange="selectCanonical_changed()">  
+          <option value="1">Observable</option>
+          <option value="2">Controlable</option>
+        </select>
+
+    
+
+
+<input type="range" id="rangeU" oninput="selectUChanged();" min="-2" max="2" step="0.01" value="0.0" style="width: 800px"> <span id="spanU">0.0</span>
+
+
+<div style="width: 595px; height: 70px; border: 0px solid black; position: relative; background-image: url(discrete.png); background-repeat: no-repeat;" id="divSSEquation">
+
+	<div style="top: 2px; left: 90px; position: absolute; display: block;">  
+		<table>
+			<tr>
+				<td> <input type="text" id="text_a11" size=1 style="font-size:10px; font-family: Times New Roman;" onchange="ssEqChanged()"></td><td><input type="text" id="text_a12" size=1 style="font-size:10px; font-family: Times New Roman;" onchange="ssEqChanged()"></td>
+			</tr>
+			<tr>
+				<td> <input type="text" id="text_a21" size=1 style="font-size:10px; font-family: Times New Roman;" onchange="ssEqChanged()"></td><td><input type="text" id="text_a22" size=1 style="font-size:10px; font-family: Times New Roman;" onchange="ssEqChanged()"></td>
+			</tr>
+		</table>
+
+	</div>
+
+	<div style="top: 2px; left: 223px; position: absolute; display: block;">  
+		<table>
+			<tr>
+				<td> <input type="text" id="text_b1" size=1 style="font-size:10px; font-family: Times New Roman;" onchange="ssEqChanged()"></td>
+			</tr>
+			<tr>
+				<td> <input type="text" id="text_b2" size=1 style="font-size:10px; font-family: Times New Roman;" onchange="ssEqChanged()"></td>
+			</tr>
+		</table>
+
+	</div>
+
+	<div style="top: 47px; left: 90px; position: absolute; display: block;">  
+		<table>
+			<tr>
+				<td> <input type="text" id="text_c1" size=1 style="font-size:10px; font-family: Times New Roman;" onchange="ssEqChanged()" value='1'></td>
+				<td> <input type="text" id="text_c2" size=1 style="font-size:10px; font-family: Times New Roman;" onchange="ssEqChanged()" value='0'></td>
+			</tr>
+		</table>
+
+	</div>
+
+</div>
+
+  <table>
+  	<tr>
+  		<td>
+			<div id="polesDiv" style="width:500px;height:400px;"></div>
+		</td>
+		<td>
+			<div id="quiverDiv" style="width:500px;height:400px;"></div>
+		</td>
+	</tr>
+
+
+
+
+  	<tr>
+  		<td colspan="2">
+			<div id="outputDiv" style="width:1000px;height:200px;"></div>
+		</td>
+	</tr>
+
+
+</table>
+
+  <script src="compute.js">	</script>
+
+  <script>
+
+
+  	CASES = [
+  	[		// poles (continuous)
+  			[[ new Singularity(-1, 1)],
+  			 [  new Singularity(0, 1)],
+  			 [     new Singularity(-1),  new Singularity(-2)],
+  			 [     new Singularity(-1),  new Singularity(-2)],
+  			 [     new Singularity(-1),   new Singularity(0)]], 
+
+  			 // zeros (continuous)
+  			[[   new Singularity(-3)],
+  			 [    new Singularity(0)], 
+  			 [    new Singularity(0)],
+  			 [   new Singularity(-2)], 
+  			 [   new Singularity(-1)]], 
+	],[
+			// poles (discrete)
+  			[[new Singularity(0.9, 0.1)],
+  			 [new Singularity(Math.cos(0.1), Math.sin(0.1))],
+  			 [new Singularity(-0.1), new Singularity(0.2)],
+  			 [new Singularity(-0.5), new Singularity(0)],
+  			 [new Singularity(-1), new Singularity(0)]], 
+
+  			 // zeros (discrete)
+  			[[       new Singularity(0)],
+  			 [       new Singularity(0)], 
+  			 [      new Singularity(-1)],
+  			 [    new Singularity(0)],
+  			 [      new Singularity(-1)]], 
+	]
+	];
+
+
+
+  	NX = 15;
+  	range = [-2, 2];
+  	dt = 0.002;
+  	vScale = 0.1;
+  	time = 0.0;
+
+  	sourcePoint = [];
+
+
+  	outputPlot = createOutputPlot('outputDiv');
+
+	vectorField = new VectorField('quiverDiv');
+	vectorField.sample();
+	vectorField.update();
+
+
+	// click event for vector field
+	vectorField.onClick = (x,y,bt) => {
+
+		//
+		// Test button
+		//
+
+		if (bt == 2) {
+
+			//
+			//  Add source
+			//
+
+			vectorField.traceLines.push(
+				{
+					mode: "lines",
+					line : { width : 3 , color: '#f0aff0'},
+					x: [], 
+					y: []
+				}
+			);
+
+			sourcePoint.push([x,y]);
+
+			Plotly.react(vectorField.divName,  vectorField.trace.concat(vectorField.traceParticles.concat(vectorField.traceLines.concat(vectorField.traceDirections))), vectorField.layout,  {displayModeBar: false, staticPlot:true});		
+
+
+		} else {
+
+
+			//
+			//  Add particle 
+			//
+
+
+			vectorField.traceParticles[0].x.push(x);
+			vectorField.traceParticles[0].y.push(y);
+
+
+			//
+			//  Add plot
+			//
+
+			outputPlot.push({
+			x: [0],
+			y: [0],
+			mode : 'lines', 
+			line : {color : "#"+((1<<24)*Math.random()|0).toString(16)}
+			});
+
+		}
+
+		vectorField.update();
+	}
+
+
+
+	//
+	//  Create pole diagram
+	//
+
+	polesDiagram = new PolesDiagram('polesDiv',1, true);
+    polesDiagram.poles = [];
+    polesDiagram.zeros = [];
+
+
+    // X1n = [];
+    // X2n = [];
+
+
+    // Start with discrete domain
+    domain = 1;
+
+
+
+
+
+    function selectDomain_changed() {
+    	domain = parseInt($('#selectDomain')[0].value);
+
+    	polesDiagram.discrete = domain;
+    	polesDiagram.update();
+
+
+    	if (!domain) {
+	    	$('#divSSEquation').css("background-image","url(continuous.png)");
+    	} else {
+	    	$('#divSSEquation').css("background-image","url(discrete.png)");
+    	}
+    }
+
+
+
+    function selectCases_changed() {
+    	let option = parseInt($('#selectCases')[0].value);
+
+    	polesDiagram.poles = CASES[domain][0][option-1];
+    	polesDiagram.zeros = CASES[domain][1][option-1];
+
+    	polesDiagram.update();
+
+    	computeVectorField();
+    }
+
+
+
+
+    function selectCanonical_changed() {
+    
+    	ssEqChanged();
+    }
+
+
+
+    function resetClicked() {
+//		document.location.reload();
+		sourcePoint = [];
+		outputPlot.splice(0,outputPlot.length);
+		vectorField.traceLines = [];
+		vectorField.traceParticles[0].x = [];
+		vectorField.traceParticles[0].y = [];
+
+		Plotly.react(vectorField.divName,  vectorField.trace.concat(vectorField.traceParticles.concat(vectorField.traceLines.concat(vectorField.traceDirections))), vectorField.layout,  {displayModeBar: false, staticPlot:true});		
+		Plotly.redraw('outputDiv');
+    }
+
+
+
+
+
+
+	function init() {
+
+
+		// add default poles
+
+	    polesDiagram.addPoles(0.9,0.1);
+	    polesDiagram.addZeros(1.2,null);
+	    polesDiagram.update();
+
+
+
+	    // assemble initial vector field (with zeros)
+
+	    let X1n = new Array(NX*NX).fill([]);
+	    let X2n = new Array(NX/NX).fill([]);
+	    let X1n1 = new Array(NX*NX).fill([]);
+	    let X2n1 = new Array(NX*NX).fill([]);
+		for (var i = 0; i < NX; i++) {
+		    for (var j = 0; j < NX; j++) {
+		    	var x1 = range[0] + (range[1]-range[0])*i/NX;
+		    	var x2 = range[0] + (range[1]-range[0])*j/NX;
+
+		    	X1n[i*NX + j] = x1;
+		    	X2n[i*NX + j] = x2;
+				X1n1[i*NX + j] = 0.0;
+				X2n1[i*NX + j] = 0.0;
+		    }
+		}
+
+		vectorField.X = X1n;
+		vectorField.Y = X2n;
+		vectorField.U = X1n1;
+		vectorField.V = X2n1;
+
+
+
+		// initialize the eigenvectors
+
+		vectorField.traceDirections.push(
+			{
+				mode: "lines",
+				line : { width : 1, color : 'black', dash: 'dash'},
+				x: [], 
+				y: []
+			}
+		);
+
+
+
+		Plotly.react(vectorField.divName,  vectorField.trace.concat(vectorField.traceParticles.concat(vectorField.traceLines.concat(vectorField.traceDirections))), vectorField.layout,  {displayModeBar: false, staticPlot:true});		
+
+
+		// setup event for moving the poles
+
+		polesDiagram.onSingularityMove = (p) => { 
+		  computeVectorField();
+		};
+
+
+		// update state space equations
+
+		let SS = zeroPoleToStateSpace(polesDiagram.zeros, polesDiagram.poles, $('#selectCanonical')[0].value);
+
+		updateSSText(SS[0], SS[1], SS[2], SS[3], SS[4], SS[5], SS[6], SS[7]);
+
+	}
+
+
+
+
+
+	function updateSSText(a11, a12, a21, a22, b1, b2, c1, c2) {
+		$('#text_a11').val(a11);
+		$('#text_a12').val(a12);
+		$('#text_a21').val(a21);
+		$('#text_a22').val(a22);
+		$('#text_b1').val(b1);
+		$('#text_b2').val(b2);
+		$('#text_c1').val(c1);
+		$('#text_c2').val(c2);
+	}
+
+
+	function getSSFromText() {
+		let a11 = parseFloat($('#text_a11').val());
+		let a12 = parseFloat($('#text_a12').val());
+		let a21 = parseFloat($('#text_a21').val());
+		let a22 = parseFloat($('#text_a22').val());
+		let b1 = parseFloat($('#text_b1').val());
+		let b2 = parseFloat($('#text_b2').val());
+		let c1 = parseFloat($('#text_c1').val());
+		let c2 = parseFloat($('#text_c2').val());
+
+		return [a11, a12, a21, a22, b1, b2, c1, c2];
+	}
+
+
+
+
+
+	function selectUChanged() {
+
+		$('#spanU').html( $('#rangeU').val() );
+
+		computeVectorField();
+	}
+
+
+
+
+	 function drawSSVetors() {
+
+		if (polesDiagram.poles.length == 2) {
+
+			ss = getSSFromText();
+
+			ssV = computeEigenvectors(ss[0], ss[1], ss[2], ss[3]);
+
+
+			let a11 = ss[0];
+			let a12 = ss[1];
+			let a21 = ss[2];
+			let a22 = ss[3];
+			let b1 = ss[4];
+			let b2 = ss[5];
+
+			let v1 = ssV[0][0];
+			let v2 = ssV[0][1];
+
+			let u1 = ssV[1][0];
+			let u2 = ssV[1][1];
+
+			// console.log(ssV);
+	
+			let u = parseFloat($('#rangeU').val());
+
+			iA = invA(a11, a12, a21, a22);
+
+			posX0 = -iA[0]*b1*u - iA[1]*b2*u;
+			posX1 = -iA[2]*b1*u - iA[3]*b2*u;
+
+			newTrace = 
+				{
+					mode: "lines",
+					line : { width : 3 , color: '#green', dash: 'dash'},
+					x: [-20 + posX0, 20 + posX0, null, -20 + posX0, 20 + posX0], 
+					y: [  -20*v2/v1 + posX1, 20*v2/v1 + posX1, 
+					null, -20*u2/u1 + posX1, 20*u2/u1 + posX1 ]
+				}
+
+			vectorField.traceDirections = [vectorField.traceDirections[0], newTrace];
+
+
+	
+
+		} else {
+			vectorField.traceDirections = [vectorField.traceDirections[0]];
+		}
+
+		// TODO: this react is almost global... make a function
+		Plotly.react(vectorField.divName,  vectorField.trace.concat(vectorField.traceParticles.concat(vectorField.traceLines.concat(vectorField.traceDirections))), vectorField.layout,  {displayModeBar: false, staticPlot:true});	
+
+	 }
+
+
+
+
+	function ssEqChanged() {
+
+		let ss = getSSFromText();
+
+		let zp = stateSpaceToPoles(ss[0], ss[1], ss[2], ss[3], ss[4], ss[5], ss[6], ss[7]);
+
+		polesDiagram.zeros = zp[0];
+		polesDiagram.poles = zp[1];
+		
+	 	polesDiagram.update();
+
+	 	computeVectorField();
+	}
+
+
+
+
+
+	function computeVectorField() {
+
+		// get system poles (and compute coefficients)
+
+		var poles = polesDiagram.getAllPoles();
+		var zeros = polesDiagram.getAllZeros();
+
+		var a = Polynomial.rootsToCoefs(poles);
+		var b = Polynomial.rootsToCoefs(zeros);
+
+
+		let SS = zeroPoleToStateSpace(zeros, poles, $('#selectCanonical')[0].value);
+
+		updateSSText(SS[0], SS[1], SS[2], SS[3], SS[4], SS[5], SS[6], SS[7]);
+
+		// if ($('#selectCanonical')[0].value == "1") {
+		// 	updateSSText(-a[1], 1, -a[2], 0, b[0], b[1]);
+		// } else  {
+		// 	updateSSText(0, 1, -a[2], -a[1], 0, 1);
+		// }
+
+
+
+		vectorField.traceDirections[0].x = [range[0], range[1]];
+		vectorField.traceDirections[0].y = [range[0]*b[1]/b[0], range[1]*b[1]/b[0]];
+
+
+		var u = parseFloat($('#rangeU').val());
+
+
+		for (var i = 0; i < NX; i++) {
+		    for (var j = 0; j < NX; j++) {
+		    	var x1 = range[0] + (range[1]-range[0])*i/NX;
+		    	var x2 = range[0] + (range[1]-range[0])*j/NX;
+
+		    	var tmp = stateEq([x1, x2], u, SS[0], SS[1], SS[2], SS[3], SS[4], SS[5]);
+
+		    	vectorField.U[i*NX+j] = tmp[0]*vScale;
+		    	vectorField.V[i*NX+j] = tmp[1]*vScale;
+		    }
+		}
+
+
+		drawSSVetors();
+
+		vectorField.update();
+
+	}
+
+
+
+
+
+
+
+
+
+
+	function draw() {
+
+		//
+		// Get all the data about the system (statespace, poles, zeros, input...)
+		//
+
+		var u = $('#rangeU').val();
+		var poles = polesDiagram.getAllPoles();
+		var zeros = polesDiagram.getAllZeros();
+		var a = Polynomial.rootsToCoefs(poles);
+		var b = Polynomial.rootsToCoefs(zeros);
+
+		time += dt;
+
+
+
+		//
+		//  Reposition particles and plots
+		//
+
+		let NParticles = vectorField.traceParticles[0].x.length;
+
+		for (var i=0; i<NParticles; i++) {
+
+
+			// particles
+
+			var x = vectorField.traceParticles[0].x[i];
+			var y = vectorField.traceParticles[0].y[i];
+
+			ss = getSSFromText();
+
+			var P = evolve(x,y, u, ss[0], ss[1], ss[2], ss[3], ss[4], ss[5], domain);
+
+			vectorField.traceParticles[0].x[i] = P[0];
+			vectorField.traceParticles[0].y[i] = P[1];
+
+
+
+			// plots
+
+			let output = ss[6]*P[0] + ss[7]*P[1];
+			let nData = outputPlot[i].x.length;
+			let t = outputPlot[i].x[nData-1];
+			outputPlot[i].x.push(t+dt);
+			outputPlot[i].y.push(output);
+		}
+
+
+		// Reset plot when its big
+		// initialize with 0 on x so that all plots keep track of their own time
+		if (time>1) {
+			for (var i=0; i<NParticles; i++) {
+				outputPlot[i].x = [0];
+				outputPlot[i].y = [0];
+			}
+			time = 0;
+		}
+
+
+		Plotly.redraw('outputDiv');
+
+
+
+
+
+
+
+		//
+		//  Redraw sources
+		//
+
+
+		for (var k=0; k<vectorField.traceLines.length; k++) {
+			for (var i=0; i<vectorField.traceLines[k].x.length; i++) {
+
+				var x = vectorField.traceLines[k].x[i];
+				var y = vectorField.traceLines[k].y[i];
+
+				ss = getSSFromText();
+
+				var P = evolve(x,y, u, ss[0], ss[1], ss[2], ss[3], ss[4], ss[5], domain);
+
+				vectorField.traceLines[k].x[i] = P[0];
+				vectorField.traceLines[k].y[i] = P[1];
+
+			}
+		}
+
+
+
+		for (var i = 0; i<sourcePoint.length; i++) {
+			let x = sourcePoint[i][0];
+			let y = sourcePoint[i][1];
+
+			vectorField.traceLines[i].x.push(x);
+			vectorField.traceLines[i].y.push(y);			
+
+			let L = vectorField.traceLines[i].x.length;
+			vectorField.traceLines[i].x.splice(0,L-100);
+			vectorField.traceLines[i].y.splice(0,L-100);
+
+		}
+
+
+
+
+
+
+		vectorField.update();
+	}
+
+
+
+
+
+
+	function setup() {
+		frameRate(12);
+
+		noCanvas();
+
+		init();
+		computeVectorField();
+	}
+
+
+
+
+
+
+
+
+
+
+  function help() {
+
+
+    $('#helpDiv').dialog({
+      height: 600,
+      width: 600,
+      modal: true,
+      buttons: {
+        Cancel: function() {
+          $('#helpDiv').dialog( "close" );
+        },
+        Ok : function() {
+          $('#helpDiv').dialog( "close" );
+
+
+
+    showHelp($('#selectDomain'), '\
+   	Select here if you want to deal with a continuous time or a discrete time system.\
+   	',()=>{
+
+    showHelp($('#selectCases'), ' \
+    Here you can select some special cases of state space representation\
+    ',()=>{
+
+    showHelp($('#selectCanonical'), '\
+   	Use this box to visualize the canonical form of the current system \
+   	' ,()=>{
+
+    showHelp($('#rangeU'), '\
+   	Click here to change the input amplitude (just the value of u(t)) to be applied as a constant. \
+   	',()=>{
+
+    showHelp($('#divSSEquation'), '\
+   	Here you can change the values for the matrices in the system<br><br> \
+   	notice something weird that happens if you try to change certain values... why does that happens?\
+   	',()=>{
+
+    showHelp($('#polesDiv'), '\
+    This shows the poles and the zero of the system. <br><br> \
+    Notice that we always have a zero...\
+    ',()=>{
+
+    showHelp($('#quiverDiv'), '\
+    This is the vector field associated with the representation<br><br> \
+    Click to add a state and see how it evolves \
+    Right-Click to add a "source" of states. The system will keep adding states and draw the path that they perform in the vector field \
+    ',()=>{
+              
+    showHelp($('#outputDiv'), '\
+    This is the output plot for the states you added in the vector field.\
+    ',()=>{
+              
+
+    }, null, 1);
+      
+    });
+
+    });
+
+    });
+      
+    });
+
+    });
+
+    });
+
+    });
+
+
+
+        } // dialog
+      } 
+    });
+
+
+  }
+
+
+
+
+
+  </script>
+</body>
+
+

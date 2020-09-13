@@ -1,0 +1,538 @@
+<head>
+  <script src="../libs/plotly-latest.min.js"></script>
+  <script src="../libs/jquery-min.js"></script>
+  <script src="ControlSystems.js"></script>
+  <script type="text/x-mathjax-config">
+    MathJax.Hub.Config({tex2jax: {inlineMath: [['$','$'], ['\\(','\\)']]}});
+  </script>
+  <script src="../libs/MathJax-2.7.3/MathJax.js?config=TeX-AMS_CHTML"></script>
+  <script src="../libs/jquery-ui/jquery-ui.min.js"></script>
+  <link rel="stylesheet" href="../libs/jquery-ui/themes/smoothness/jquery-ui.css">
+
+  <script src="../libs/helpLib.js"></script>
+  <link rel="stylesheet" href="../libs/helpLib.css">
+
+  <style type="text/css">
+    
+body {
+    user-select: none; /* supported by Chrome and Opera */
+   -webkit-user-select: none; /* Safari */
+   -khtml-user-select: none; /* Konqueror HTML */
+   -moz-user-select: none; /* Firefox */
+   -ms-user-select: none; /* Internet Explorer/Edge */
+}   
+
+  </style>
+
+
+</head>
+
+<body>
+
+
+<table width="100%">
+  <tr>
+    <td><h2>Time and frequency response for linear systems:</h2></td> <td align="right"> <a href='#' onclick="help()">How to use:</a> </td>
+  </tr>
+</table>
+
+
+<div id="helpDiv" style="display: none;" title="System Responses WebApp">
+This WebApp aims to visualize in real time what is the response of a system when you position its poles and zeros. 
+
+    <ul>
+      <li> Click and drag the singularities (poles or zeros) to change their position</li>
+      <li> Left click to add a complex pair of poles (press shift to add a single real pole) </li>
+      <li> Alt-Left click to add a complex pair of zeros (press shift to add a single real zero)</li>
+      <li> Press ESC key to reset the diagram</li>
+    </ul>
+
+    You can also chose the system domain (discrete / continuous), pick the input to simulate and see the transfer function when you mode the poles and/or zeros around.
+
+<p>
+Press OK to see the function of each element in the WebApp.
+  </div>
+
+</div>
+
+
+
+      <p>
+    System domain: <select id = "selectDomain" onchange="selectDomain_changed()">  
+          <option value="1">Discrete</option>
+          <option value="0">Continuous</option>
+        </select>
+
+    Lock pole: <select id = "selectLockPole">  
+          <option value="0"></option>
+          <option value="1">Real</option>
+          <option value="2">Imaginary</option>
+          <option value="3">Phase</option>
+          <option value="4">Magnitude</option>
+          <option value="5">Exp</option>
+        </select>
+
+    <input type="checkbox" id="checkboxLoop" name="checkboxLoop" value="0" onchange="selectDomain_changed()">
+    <label for="checkboxLoop"> Closed Loop </label>
+
+    <input type="checkbox" id="checkboxNormalize" name="checkboxNormalize" value="0" onchange="selectDomain_changed()">
+    <label for="checkboxNormalize"> Normalized </label>
+
+    <input type="checkbox" id="checkboxLockPlot" name="checkboxLockPlot" value="0" onchange="selectDomain_changed()">
+    <label for="checkboxLockPlot"> Lock Plot </label><br>
+      </p>
+
+
+<table>
+  <tr>
+    <td align="center">
+      Pole / Zero diagram
+      <div id="polesDiv" style="width:600px;height:500px; outline: #f0f0f0 solid 1px;" tabindex="0" ></div>
+    </td>
+    <td align="center">
+      <a href="#" onclick="$('#responseDiv').toggle();"> System time response </a>
+      <div id="responseDiv" style="width:600px;height:500px"></div>
+    </td>
+  </tr>
+  <tr>
+    <td>
+
+      <div style="width:590px;height:100%; overflow: hidden; vertical-align: middle;">
+        <p>
+    Selected singularity: <span id = "polespanSelectedPole"></span> 
+      </p>
+
+
+      <p>
+        Input: <select id = "selectInput" onchange="selectInput_changed()">  </select>
+      </p>
+
+      <p>
+        <span id = "spanTF" style="font-size: 20px"></span>
+      </p>
+
+    </div>
+    </td>
+    <td align="center">
+      <a href="#" onclick="$('#freqResponseDiv').toggle();"> System frequency response  </a>
+      
+      <div id="freqResponseDiv" style="width:600px;height:500px;"></div>
+    </td>
+  </tr>
+</table>
+
+
+
+
+
+
+
+  <script>
+
+
+//console.log(Polynomial.eval([1, 0, 0, 0, 1],{real:0.5, imag:0.5}));
+
+
+
+
+// system
+NTime = 600;
+discrete = 1;
+dt = 0.01;
+
+us = [
+  {name:"impulse", u: (x) => (1/(1+ (1-discrete)*(dt-1)))*(x==0) },
+  {name:"step", u: (x) => 1*(x>=0)},
+  {name:"sinuoidal", u: (x) => Math.sin(x/3)*(x>=0)},
+  {name:"ramp", u: (x) => (x/10)*(x>=0)},
+];
+u = us[0].u;
+
+var selectedPole = {real:0, imag:0};
+
+
+
+
+
+polesDiagram = new PolesDiagram('polesDiv',discrete, false);
+inputResponse = new TimePlot('responseDiv',           NTime,        0,         1,        -0.2,        2.2,     discrete, dt);
+freqRespose = new FreqPlot('freqResponseDiv', NPoints = NTime, minX = 0.0, maxX = Math.PI, minY = -10.0, maxY = 10.0, discrete);
+
+inputResponse.init();
+
+
+polesDiagram.polesZerosRange = {discrete: {x:[-1.1, 1.1], y:[-1.1, 1.1]}, continuous: {x:[-5, 1.5], y:[-5, 5]}};
+
+
+polesDiv = $('#polesDiv');
+responseDiv = $('#responseDiv');
+spanSelectedPole = $('#polespanSelectedPole');
+spanTF = $('#spanTF');
+selectInput = $('#selectInput');
+selectDomain = $('#selectDomain');
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+function init() {
+
+    polesDiagram.poles = [];
+    polesDiagram.zeros = [];
+
+    polesDiagram.addPoles(0.9,0.1);
+    polesDiagram.addPoles(0.8,0.25);
+    polesDiagram.addZeros(1.2,null);
+    polesDiagram.update();
+
+    polesDiagram.onSingularitySelected = (p) => {
+      var pStr = '';
+      if (p.imag != null) {
+        pStr = p.real.toPrecision(4) + ' &plusmn; j' + p.imag.toPrecision(4);
+      } else {
+        pStr = p.real.toPrecision(4);
+      }
+
+      pStr += ' ( |p| = ' +  ComplexOps.abs(p).toPrecision(4) + ' &ang;p =  ' + ComplexOps.angle(p).toPrecision(4)  + ')';
+
+      spanSelectedPole.html(pStr);
+
+
+
+      // draw the "lock lines"
+      if (!selectedPole) {
+
+        if ($('#selectLockPole').val() == "1") {
+
+          polesDiagram.traceRlocus[0].x = [p.real, p.real];
+          polesDiagram.traceRlocus[0].y = [-10, 10];
+
+        }
+
+        if ($('#selectLockPole').val() == "2") {
+          polesDiagram.traceRlocus[0].x = [-10, 10, null, -10, 10];
+          polesDiagram.traceRlocus[0].y = [p.imag, p.imag, null, -p.imag, -p.imag,];
+        }
+
+        if ($('#selectLockPole').val() == "3") {
+          polesDiagram.traceRlocus[0].x = [-10, 10, null, -10, 10];
+          polesDiagram.traceRlocus[0].y = [10*p.imag/p.real, -10*p.imag/p.real, null, -10*p.imag/p.real, 10*p.imag/p.real];
+
+        }
+
+        if ($('#selectLockPole').val() == "4") {
+          polesDiagram.traceRlocus[0].x = [];
+          polesDiagram.traceRlocus[0].y = [];
+          let mag = Math.sqrt(p.real*p.real+p.imag*p.imag);
+          for (var ang = 0; ang< Math.PI*2; ang += 0.1) {
+            polesDiagram.traceRlocus[0].x.push(mag*Math.cos(ang));
+            polesDiagram.traceRlocus[0].y.push(mag*Math.sin(ang));
+          }
+        }
+
+        if ($('#selectLockPole').val() == "5") {
+          polesDiagram.traceRlocus[0].x = [];
+          polesDiagram.traceRlocus[0].y = [];
+          let magZ = Math.sqrt(p.real*p.real+p.imag*p.imag);
+          let phaseZ = Math.atan2(p.imag, p.real);
+          let realS = Math.log(magZ);
+          let imagS = phaseZ;
+          let maxAng = Math.PI*2*Math.abs(realS/imagS);
+          for (var ang = 0; ang < maxAng; ang += maxAng/100) {
+            let realZ = Math.exp(-ang)*Math.cos(-ang*imagS/realS);
+            let imagZ = Math.exp(-ang)*Math.sin(-ang*imagS/realS);
+
+            polesDiagram.traceRlocus[0].x.push(realZ);
+            polesDiagram.traceRlocus[0].y.push(imagZ);
+          }
+          polesDiagram.traceRlocus[0].x.push(null);
+          polesDiagram.traceRlocus[0].y.push(null);
+          for (var ang = 0; ang < maxAng; ang += maxAng/100) {
+            let realZ = Math.exp(-ang)*Math.cos(-ang*imagS/realS);
+            let imagZ = Math.exp(-ang)*Math.sin(-ang*imagS/realS);
+
+            polesDiagram.traceRlocus[0].x.push(realZ);
+            polesDiagram.traceRlocus[0].y.push(-imagZ);
+          }
+        }
+
+
+        selectedPole = {real: p.real, imag: p.imag};
+      }
+    };
+
+    polesDiagram.onSingularityDeselected = (p) => {
+
+      polesDiagram.traceRlocus[0].x = [];
+      polesDiagram.traceRlocus[0].y = [];
+
+
+      spanSelectedPole.html('');
+
+      selectedPole = null;
+    };
+
+
+    polesDiagram.onSingularityMove = (p) => { 
+
+      if ($('#selectLockPole').val() == "1") {
+        p.real = selectedPole.real;
+      }
+
+      if ($('#selectLockPole').val() == "2") {
+        p.imag = selectedPole.imag;
+      }
+
+      if ($('#selectLockPole').val() == "3") {
+        p.imag = p.real*selectedPole.imag/selectedPole.real;
+      }
+
+      if ($('#selectLockPole').val() == "4") {
+        let mag = Math.sqrt(selectedPole.real*selectedPole.real + selectedPole.imag*selectedPole.imag);
+        let ang = Math.atan2(p.imag, p.real);
+        p.real = mag*Math.cos(ang);
+        p.imag = mag*Math.sin(ang);
+      }
+
+      if ($('#selectLockPole').val() == "5") {
+
+
+        let magZ0 = Math.sqrt(selectedPole.real*selectedPole.real + selectedPole.imag*selectedPole.imag);
+        let phaseZ0 = Math.atan2(selectedPole.imag, selectedPole.real);
+        let realS0 = Math.log(magZ0);
+        let imagS0 = phaseZ0;
+
+        let magZp = Math.sqrt(p.real*p.real + p.imag*p.imag);
+        let phaseZp = Math.atan2(p.imag, p.real);
+        let realSp = Math.log(magZp);
+        let imagSp = phaseZp;
+
+        let realSp1 = realSp;
+        let imagSp1 = realSp*imagS0/realS0;
+
+        let newAbsZ = Math.exp(realSp1);
+        let newPhaseZ = imagSp1;
+
+        p.real = newAbsZ*Math.cos(newPhaseZ);
+        p.imag = newAbsZ*Math.sin(newPhaseZ);
+      }
+
+
+
+      computeOutput(polesDiagram.getAllPoles(), polesDiagram.getAllZeros());
+      MathJax.Hub.Queue(["Typeset",MathJax.Hub]);    
+    };
+
+    polesDiagram.onSingularityAdd = (p) => { 
+      computeOutput(polesDiagram.getAllPoles(), polesDiagram.getAllZeros());
+      MathJax.Hub.Queue(["Typeset",MathJax.Hub]);
+    };
+
+    polesDiagram.onSingularityDel = (p) => { 
+      computeOutput(polesDiagram.getAllPoles(), polesDiagram.getAllZeros());
+      MathJax.Hub.Queue(["Typeset",MathJax.Hub]);
+    };
+
+    polesDiagram.onKeyDown = (key) => { 
+      if (key=="Escape") {
+        init();
+      }
+    };
+
+
+
+
+  // fill inputSelect
+  for (var i = 0; i<us.length; i++) {
+    selectInput.append(new Option(us[i].name , i)); 
+  }
+
+
+
+}
+
+
+
+
+function selectInput_changed() {
+//  console.log(option);
+
+  var option = Number(selectInput.val());
+
+  u = us[option].u;
+
+  polesDiagram.onSingularityMove(polesDiagram.poles[0]);
+}
+
+
+
+function selectDomain_changed() {
+  var option = Number(selectDomain.val());
+
+  discrete = option;
+
+  polesDiagram.discrete = discrete;
+  inputResponse.discrete = discrete;
+  freqRespose.discrete = discrete;
+
+  polesDiagram.update();
+
+  computeOutput(polesDiagram.getAllPoles(), polesDiagram.getAllZeros());
+
+  MathJax.Hub.Queue(["Typeset",MathJax.Hub]);
+
+
+  inputResponse.layout.yaxis.autorange = !$('#checkboxLockPlot').is(':checked');
+
+}
+
+
+
+
+function computeOutput(poles, zeros) {
+
+  var a = Polynomial.rootsToCoefs(poles);
+  var b = Polynomial.rootsToCoefs(zeros);
+
+  if ($('#checkboxNormalize').is(':checked')) {
+    gain = Math.abs(normilizeGain(a, b, discrete));
+    b = b.map((x)=>gain*x);
+  } 
+  
+
+
+
+  if ($('#checkboxLoop').is(":checked")) {
+    a = Polynomial.add(a,b);
+  }
+
+
+
+  inputResponse.compute(a, b);
+  freqRespose.compute(a, b);
+
+
+  inputResponse.update();
+  freqRespose.update();
+
+  spanTF.html( renderTransferFunction(a, b, discrete) );
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+init();
+
+polesDiagram.onSingularityMove(polesDiagram.poles[0]);
+
+
+
+
+
+
+  function help() {
+
+    $('#helpDiv').dialog({
+      height: 600,
+      width: 600,
+      modal: true,
+      buttons: {
+        Cancel: function() {
+          $('#helpDiv').dialog( "close" );
+        },
+        Ok : function() {
+          $('#helpDiv').dialog( "close" );
+
+
+
+
+
+
+    showHelp($('#selectDomain'), 'Select here if you want to deal with a continuous time or a discrete time system.',()=>{
+
+    showHelp($('#polesDiv'), ' \
+    Here you can add and or remove singularities.\
+    <ul> \
+      <li> Click and drag the singularities (poles or zeros) to change their position</li> \
+      <li> Left click to add a complex pair of poles (press shift to add a single real pole) </li> \
+      <li> Alt-Left click to add a complex pair of zeros (press shift to add a single real zero)</li> \
+      <li> Press ESC key to reset the diagram</li> \
+    </ul> \
+    ',()=>{
+
+    showHelp($('#selectLockPole'), 'Select a constrain in the movement of the poles. <br><br> For instance, you might want to move the poles keeping the real part constant, or keep the phase constant, etc.' ,()=>{
+
+    showHelp($('#checkboxLoop'), 'Click here to see the response in closed loop',()=>{
+
+    showHelp($('#checkboxNormalize'), 'Click here to set the gain of the system to 1',()=>{
+
+    showHelp($('#checkboxLockPlot'), 'Select this option to lock the scale of the response plot as it is now. <br> <br> This is useful to compare different overshoots.',()=>{
+
+    showHelp($('#responseDiv'), 'This is the time response plot according to the selected input.',()=>{
+              
+    showHelp($('#freqResponseDiv'), 'This is the frequency response plot according to the selected input.',()=>{
+              
+    showHelp($('#selectInput'), 'Select the input you want to see the response to.',()=>{
+              
+    });
+
+    }, null, 1);
+      
+    });
+
+    });
+
+    });
+      
+    });
+
+    });
+
+    });
+
+    });
+
+
+
+
+        } // dialog
+      } 
+    });
+
+
+
+  }
+
+
+
+
+
+
+
+  </script>
+</body>
+

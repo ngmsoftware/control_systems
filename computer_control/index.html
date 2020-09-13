@@ -1,0 +1,306 @@
+<!doctype html>
+<html>
+<head>
+  <link rel="stylesheet" href="../../libs/jquery-ui/jquery-ui.css">
+
+	<script src="../../libs/d3.v3.min.js"></script>
+	<script src="../../libs/jquery-min.js"></script>
+  <script src="../../libs/jquery-ui/jquery-ui.min.js"></script>
+
+	<script src="../../libs/plotly-latest.min.js"></script>
+	<script type="text/x-mathjax-config">
+	  MathJax.Hub.Config({tex2jax: {inlineMath: [['$','$'], ['\\(','\\)']]}});
+	</script>
+	<script src="../../libs/MathJax-2.7.3/MathJax.js?config=TeX-AMS_CHTML"></script>
+
+	  <script src="../ControlSystems.js"></script>
+  <link rel="stylesheet" href="../../libs/jquery-ui/themes/smoothness/jquery-ui.css">
+
+  <script src="../../libs/helpLib.js"></script>
+  <link rel="stylesheet" href="../../libs/helpLib.css">
+
+
+	<style type="text/css">
+
+
+.vars {
+     font-size: 14px;
+}
+
+
+.code {
+     font-size: 18px;
+}
+
+.while {
+     color: #00ff00;
+}
+
+.ref {
+     color: #aaaaaa;
+}
+
+.out {
+     color: #cccccc;
+}
+
+.err {
+     color: #cccccc;
+}
+
+.ctrl {
+     color: #ccccff;
+}
+
+
+body {
+    user-select: none; /* supported by Chrome and Opera */
+   -webkit-user-select: none; /* Safari */
+   -khtml-user-select: none; /* Konqueror HTML */
+   -moz-user-select: none; /* Firefox */
+   -ms-user-select: none; /* Internet Explorer/Edge */
+}   
+
+
+	</style>
+
+
+</head>
+
+
+
+
+<body style="zoom: 100%;">
+
+
+<table width="100%">
+  <tr>
+    <td><h2>Computer Controlled Systems:</h2></td> <td align="right"> <a href='#' onclick="help()">How to use:</a> </td>
+  </tr>
+</table>
+
+
+<div id="helpDiv" style="display: none;" title="Computer Control WebApp">
+
+This WebApp illustrates how a computer controlled system works.<br> 
+
+Here you have a conventional computer control loop in the form of a c-like pseudo-code. You can step (or play) through it and see the corresponding signals involved in the process. <br>
+You can also, at any time, change the reference value. The plot shows the signals that are present in the system. The values of the variables are also shown as the code gets "executed". <br>
+The figure in the right depicts how the system is connected.
+<p>
+Press OK to see the function of each element in the WebApp.
+  </div>
+</div>
+
+
+
+
+
+<table width="100%" border=0>
+
+	<tr>
+
+		<td width="500" style="padding: 10px;" valign="top">
+
+			<div id="transferFuncSpan" style="font-size: 25px;"></div><br>
+
+			<button onclick="stepClicked();" id="stepButton">Step!</button>&nbsp;&nbsp;
+			<button onclick="playClicked();" id="playButton">Play!</button>
+			<br>			<br>
+
+			<div id="divCode">
+			<div id='line1' class="code" style=""><tt> n = 1</tt></div>
+			<div id='line2' class="code while"><tt> while (1)</tt></div>
+			<div id='line3' class="code ref"><tt>&nbsp;&nbsp;&nbsp;    r[n] = reference()</tt></div>
+			<div id='line4' class="code out"><tt>&nbsp;&nbsp;&nbsp;    y[n] = readIO(IN)</tt></div>
+			<div id='line5' class="code err"><tt>&nbsp;&nbsp;&nbsp;    e[n] = r[n] - y[n]</tt></div>
+			<div id='line6' class="code ctrl"><tt>&nbsp;&nbsp;&nbsp;    u[n-1] + <span id="ctrl1Span">0.5</span>*(e[n]-e[n-1]) + <span id="ctrl2Span">1.1</span>*e[n]</tt></div>
+			<div id='line7' class="code ctrl"><tt>&nbsp;&nbsp;&nbsp;    writeIO(u[n+1],OUT)</tt></div>
+			<div id='line8' class="code"><tt>&nbsp;&nbsp;&nbsp;    n = n + 1</tt></div>
+			<div id='line9' class="code"><tt>  end</tt></div>
+			</div>
+			<br><br>
+			<table>
+				<tr>
+					<td style= "padding-right: 10px;"> Reference: </td> <td> <div id='rangeR' style="width:300px;"></div> </td> <td style="padding-left: 10px;"> R = <span id="spanRefSlider"> 3.00 </span> </td>
+				</tr>
+			</table>
+		</td>
+
+		<td style="padding: 10px;">
+			<table>
+				<tr id="trSystems">
+					<td> <button onclick="CPUClicked();">CPU</button> <button onclick="DRIVERClicked();">DRIVER</button> <button onclick="PLANTClicked();">PLANT</button> </td>
+				</tr>
+			</table>
+
+			<div style="width: 500px; height: 360px;" id="divImage">
+				<img src="images/computer.png" width="500" style="position: absolute;" id="CPUImg">	
+				<img src="images/base.png" width="500" style="position: absolute;">	
+				<img src="images/inverter_small.png" width="500" style="position: absolute;" id="DRIVERImg">		
+				<img src="images/motor.png" width="500" style="position: absolute;" id="PLANTImg">		
+			</div>
+
+
+			
+		</td>
+
+	</tr>
+
+	<tr>
+
+		<td width="300" style="padding: 10px;" colspan="2" id="trMemory">
+			<span class="vars"><tt> n : <span id = "spanN">0</span></tt><br>
+			<span class="vars"><tt> r : [<span id = "spanRef"></span>]</tt><br>
+			<span class="vars"><tt> y : [<span id = "spanOut"></span>]</tt><br>
+			<span class="vars"><tt> e : [<span id = "spanErr"></span>]</tt><br>
+			<span class="vars"><tt> u : [<span id = "spanCtrl"></span>]</tt><br>
+		</td>
+
+	</tr>
+
+	<tr>
+
+		<td colspan="2">
+			<div id='osciloscopeDiv' style="width: 1200px; height: 300px;"></div>
+		</td>
+
+	</tr>
+
+</table>
+
+
+
+
+</body>
+
+
+
+	<script src="../../libs/p5/p5.js"></script>
+	<script src="vars.js"></script>
+	<script src="utils.js"></script>
+	<script src="classes.js"></script>
+	<script src="sketch.js"></script>
+
+
+
+
+
+<script type="text/javascript">
+  
+$('#rangeR').slider({
+      min: 0,
+      max: 6,
+      step: 0.01,
+      value: 3,
+      slide: function( event, ui ) {
+        $('#spanRefSlider').html(ui.value );
+        _globalRef = ui.value;
+      }
+    });
+
+
+
+
+
+
+
+  function help() {
+
+    $('#helpDiv').dialog({
+      height: 600,
+      width: 600,
+      modal: true,
+      buttons: {
+        Cancel: function() {
+          $('#helpDiv').dialog( "close" );
+        },
+        Ok : function() {
+          $('#helpDiv').dialog( "close" );
+
+
+
+
+
+
+
+
+
+
+    showHelp($('#transferFuncSpan'), '\
+Here you see the transfer function that is being computer controlled \
+    ',()=>{
+
+    showHelp($('#stepButton'), ' \
+Click here to step through the code\
+    ',()=>{
+
+    showHelp($('#playButton'), '\
+Click here to animate without pausing at each step\
+	',()=>{
+
+    showHelp($('#divCode'), '\
+This is the controller code. <br><br> \
+At each step, the current line to be executed is highlighted and the action is taken. The plots and memory data are update after each line execution.\
+    ',()=>{
+
+    showHelp($('#rangeR'), ' \
+Here you can select the reference that will he read and used in the control.\
+    ',()=>{
+
+    showHelp($('#trSystems'), ' \
+Use these buttons to change the plant and the controller (the driver is changed merely for illustration purpose)\
+    ',()=>{
+
+    showHelp($('#divImage'), '\
+He you see the pictorial representation of the control system \
+	',()=>{
+
+    showHelp($('#trMemory'), '\
+Here you see all the values for the variables in the control code. As the code is executed these variables are updated here. \
+    ',()=>{
+
+    showHelp($('#osciloscopeDiv'), ' \
+Here you see the plots od the signals involved in the control. <br> \
+<ul>\
+	<li><font color="black">Black</font>: Reference signal</li>\
+	<li><font color="red">Red</font>: Control signal applied to the plant </li>\
+	<li><font color="blue">Blue</font>: Output of the plant</li>\
+</ul>\
+The black dots indicates where the error signal is computed. It marks the values in the reference and in the output of the plant. <br><br> The bars indicates the time where each line of code is executed\
+    ',()=>{
+
+
+    }, null, 1);
+
+    });
+
+    });
+
+    });
+
+    });
+
+    });
+
+    });
+
+    });
+
+    });
+
+
+
+
+        } // dialog
+      } 
+    });
+
+
+  }
+
+
+</script>
+
+
+</html>
