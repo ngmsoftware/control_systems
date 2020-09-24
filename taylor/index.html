@@ -1,0 +1,205 @@
+<!doctype html>
+<html>
+<head>
+	<link rel="stylesheet" href="../../libs/jquery-ui/jquery-ui.css">
+
+	<script src="../../libs/d3.v3.min.js"></script>
+	<script src="../../libs/jquery-min.js"></script>
+	<script src="../../libs/jquery-ui/jquery-ui.min.js"></script>
+	<script src="../../libs/plotly-latest.min.js"></script>
+	<script type="text/x-mathjax-config">
+	  MathJax.Hub.Config({tex2jax: {inlineMath: [['$','$'], ['\\(','\\)']]}});
+	</script>
+	<script src="../../libs/MathJax-2.7.3/MathJax.js?config=TeX-AMS_CHTML"></script>
+
+
+	<style type="text/css">
+
+
+
+
+.overlay{
+    background: none repeat scroll 0 0 rgba(0, 0, 0, 0.5);
+    height: 100%;
+    left: 0;
+    position: fixed;
+    top: 0;
+    width: 100%;
+    z-index: 101;
+}
+
+
+.button {
+  border: none;
+  padding: 5px 32px;
+  text-align: center;
+  text-decoration: none;
+  display: inline-block;
+  font-size: 16px;
+}
+
+	</style>
+
+
+</head>
+<body>
+
+
+
+
+
+<table width="100%">
+  <tr>
+    <td><h2>Taylor series:</h2></td> <td align="right"> <a href='#' id= 'helpLink' onclick="help()">How to use:</a> </td>
+  </tr>
+</table>
+
+<div id= "helpDiv" style="display: none;" title="Discrete Oscilations WebApp">
+
+This WebApp illustrate how Taylor series expansion can be used to approximate a function.<br>
+Select the domain you want to play (1D or 2D), the function you want to approximate and the degree of the approximating polynomial. <br> You will see the plot of the function and the approximation. Move the mouse over the canvas to move the center point of the expansion. Mouse scroll the canvas to zoom.
+<p>
+Press OK to see the function of each element in the WebApp.
+  </div>
+
+
+
+
+
+
+<table width="800">
+	<tr>
+		<td>
+
+<span id = "spanButtons">
+<input type="button" value="1D" onclick="button1Clicked();" class="button"> <input type="button" value="2D" onclick="button2Clicked();" class="button">
+</span>
+
+
+				<select id="selectFx" onchange="selectFxChanged();" style="font-size: 30px;">	
+				</select> 
+				<select id="selectFxy" onchange="selectFxyChanged();" style="font-size: 30px; display: none;">	
+				</select> 
+
+			<select id="selectNTaylor" onchange="selectNTaylorChanged();" style="font-size: 30px;">	
+				<option>1</option>
+				<option>2</option>
+				<option>3</option>
+				<option>4</option>
+				<option>5</option>
+				<option>6</option>
+			</select> 
+
+			<span id='spanShowAll'><input type="checkbox" id="checkboxShowAll" onclick="checkboxShowAllClicked()"> Show all aprox.</span>
+		</td>
+	</tr>
+
+	<tr>
+		<td id="tdCanvas">
+			<div id="divCanvas1D"></div> 
+			<div id="divCanvas2D" style="display: none;"></div> 
+			<div id="divCanvas3D" style="display: none;"></div> 
+		</td>
+	</tr>
+
+</table>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</body>
+
+	<script src="../../libs/p5/p5.js"></script>
+	<script src="vars.js"></script>
+	<script src="utils.js"></script>
+	<script src="classes.js"></script>
+	<script src="sketch.js"></script>
+
+
+
+  <script src="../../libs/helpLib.js"></script>
+  <link rel="stylesheet" href="../../libs/helpLib.css">
+
+
+<script type="text/javascript">
+  
+
+
+  function help() {
+
+  	let updateMath = ()=>{ console.log('loaded...');  MathJax.Hub.Queue(["Typeset",MathJax.Hub]); };
+
+
+    $('#helpDiv').dialog({
+      height: 600,
+      width: 600,
+      modal: true,
+      buttons: {
+        Cancel: function() {
+          $('#helpDiv').dialog( "close" );
+        },
+        Ok : function() {
+          $('#helpDiv').dialog( "close" );
+
+
+
+	showHelp($('#spanButtons'), 'Select the domain you want to play the demo with (1D or 2D)',()=>{
+
+	showHelp($('#selectFx'), ' Select the function $f(x)$ you want to Taylor approximate the hell out of it! ',()=>{
+
+	showHelp($('#selectFxy'), ' Select the function $f(x,y)$ you want to Taylor approximate the hell out of it! ',()=>{
+
+	showHelp($('#selectNTaylor'), ' Select the polynomial degree you want to approximate the function with. ',()=>{
+
+	showHelp($('#spanShowAll'), ' Click here to show all the approximation up to the selected order <br> Obs: This works only in 1D. In 2D the plot would be a mess and your processor would burn!',()=>{
+
+	showHelp($('#tdCanvas'), ' Here you will see the function and its approximation based on the Taylor expansion you configured <br> Move the mouse over to change the expansion point. <br> Use the mouse wheel to zoom in and out. ',()=>{
+
+
+
+	},null, 0, 600, updateMath );
+
+	},null, 0, 300, updateMath );
+
+	},null, 0, 300, updateMath );
+
+	},null, 0, 300, updateMath );
+
+	},null, 0, 300, updateMath );
+
+	},null, 0, 300, updateMath );
+
+
+
+        } // dialog
+      } 
+    });
+
+
+  }
+
+
+
+
+
+</script>
+
+
+
+
+
+
+
+
+
+</html>

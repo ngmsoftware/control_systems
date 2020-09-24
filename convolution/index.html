@@ -1,0 +1,221 @@
+<!doctype html>
+<html>
+<head>
+	<link rel="stylesheet" href="../../libs/jquery-ui/jquery-ui.css">
+
+	<script src="../../libs/d3.v3.min.js"></script>
+	<script src="../../libs/jquery-min.js"></script>
+	<script src="../../libs/jquery-ui/jquery-ui.min.js"></script>
+	<script src="../../libs/plotly-latest.min.js"></script>
+	<script type="text/x-mathjax-config">
+	  MathJax.Hub.Config({tex2jax: {inlineMath: [['$','$'], ['\\(','\\)']]}});
+	</script>
+	<script src="../../libs/MathJax-2.7.3/MathJax.js?config=TeX-AMS_CHTML"></script>
+
+
+	<style type="text/css">
+
+
+
+
+.overlay{
+    background: none repeat scroll 0 0 rgba(0, 0, 0, 0.5);
+    height: 100%;
+    left: 0;
+    position: fixed;
+    top: 0;
+    width: 100%;
+    z-index: 101;
+}
+
+
+.button {
+  border: none;
+  padding: 5px 32px;
+  text-align: center;
+  text-decoration: none;
+  display: inline-block;
+  font-size: 16px;
+}
+
+	</style>
+
+
+</head>
+<body>
+
+
+
+
+
+<table width="100%">
+  <tr>
+    <td><h2>Convolution:</h2></td> <td align="right"> <a href='#' id= 'helpLink' onclick="help()">How to use:</a> </td>
+  </tr>
+</table>
+
+<div id= "helpDiv" style="display: none;" title="Discrete Oscilations WebApp">
+
+This WebApp illustrate the concept of convolution. You can pick two functions in the select boxes and see interactively their convolution.<br>
+Pick the functions and move the mouse in the second line plot to slide one over the other. The product of the displaced and mirrored versiob of $f(x)$ and $g(x)$ will be shown in the third plot line and convolution will be shown in the last one.
+<p>
+Press OK to see the function of each element in the WebApp.
+  </div>
+
+
+
+
+
+
+<table width="800">
+	<tr>
+		<td>
+
+				<select id="selectDomain" onchange="selectDomainChanged()">
+					<option value='1'> Continuos </option>
+					<option value='2' selected> Discrete </option>
+				</select>
+
+				<select id="selectF1" onchange="selectF1Changed();" style="font-size: 30px;">	
+				</select> 
+				<select id="selectF2" onchange="selectF2Changed();" style="font-size: 30px;">	
+				</select> 
+			
+		</td>
+	</tr>
+
+
+	<tr>
+		<td>
+			<table>
+				<tr id="trF1F2">
+					<td> <div id="divCanvasFunc1"></div>  </td><td> <div id="divCanvasFunc2"></div>  </td>
+				</tr>
+			</table>
+		</td>
+	</tr>
+
+	<tr>
+		<td>
+			<div id="divCanvasBoth"></div> 
+		</td>
+	</tr>
+
+
+	<tr>
+		<td>
+			<div id="divCanvasProd"></div> 
+		</td>
+	</tr>
+
+	<tr>
+		<td>
+			<div id="divCanvasConv"></div> 
+		</td>
+	</tr>
+</table>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</body>
+
+	<script src="../../libs/p5/p5.js"></script>
+	<script src="../ControlSystems.js"></script>
+	<script src="vars.js"></script>
+	<script src="utils.js"></script>
+	<script src="classes.js"></script>
+	<script src="sketch.js"></script>
+
+
+
+  <script src="../../libs/helpLib.js"></script>
+  <link rel="stylesheet" href="../../libs/helpLib.css">
+
+
+<script type="text/javascript">
+  
+
+
+  function help() {
+
+  	let updateMath = ()=>{ console.log('loaded...');  MathJax.Hub.Queue(["Typeset",MathJax.Hub]); };
+
+
+    $('#helpDiv').dialog({
+      height: 600,
+      width: 600,
+      modal: true,
+      buttons: {
+        Cancel: function() {
+          $('#helpDiv').dialog( "close" );
+        },
+        Ok : function() {
+          $('#helpDiv').dialog( "close" );
+
+
+
+	showHelp($('#selectDomain'), 'Select the domain you want to play the demo with',()=>{
+
+	showHelp($('#selectF1'), ' Select the first $f(x)$ you want to use! ',()=>{
+
+	showHelp($('#selectF2'), ' Select the second function $g(x)$ you want to convolve $f(x)$ with ',()=>{
+
+	showHelp($('#trF1F2'), ' Here you see the plots for each functions ',()=>{
+
+	showHelp($('#divCanvasBoth'), ' here you see both functions in the same plot with the fists one already mirrored and displaced $f(\\bar x - x)$ and the second one $g(\\bar x)$. <br>Move the mouse to change the  displacement $x$',()=>{
+
+	showHelp($('#divCanvasProd'), ' Here you see the product of $f(\\bar x - x)$ and $g(\\bar x)$  ',()=>{
+
+	showHelp($('#divCanvasConv'), ' Now you have the result $\\int_{-\\infty}^{x} f(\\bar x - x)g(\\bar x) d\\bar x$  ',()=>{
+
+
+
+	},null, 1, 400, updateMath );
+
+	},null, 0, 300, updateMath );
+
+	},null, 0, 600, updateMath );
+
+	},null, 0, 300, updateMath );
+
+	},null, 0, 300, updateMath );
+
+	},null, 0, 300, updateMath );
+
+	},null, 0, 300, updateMath );
+
+
+
+        } // dialog
+      } 
+    });
+
+
+  }
+
+
+
+
+
+</script>
+
+
+
+
+
+
+
+
+
+</html>

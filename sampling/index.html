@@ -67,12 +67,18 @@ Signal:
 </p>
 
 
-
-<input type="range" id="rangeT" oninput="rangeTChanged();" min="0.01" max="1" step="0.01" value="0.5" style="width: 400px"> <span id="spanT">0.5</span>
-
-<input type="range" id="rangePulse" oninput="rangePulseChanged();" min="1" max="20" step="1" value="4" style="width: 100px"> <span id="spanPulse">4</span>
-
-<input type="range" id="rangeFilter" oninput="rangeFilterChanged();" min="0.01" max="1.0" step="0.01" value="0.25" style="width: 100px"> <span id="spanFilter">0.25</span>
+<table>
+	<tr>
+		<td>Sampling time</td>
+		<td>Pulse width</td>
+		<td>Filter bandwidth</td>
+	</tr>
+	<tr>
+		<td><input type="range" id="rangeT" oninput="rangeTChanged();" min="0.01" max="1" step="0.01" value="0.5" style="width: 400px"> <span id="spanT">0.5</span></td>
+		<td><input type="range" id="rangePulse" oninput="rangePulseChanged();" min="1" max="20" step="1" value="4" style="width: 100px"> <span id="spanPulse">4</span></td>
+		<td><input type="range" id="rangeFilter" oninput="rangeFilterChanged();" min="0.01" max="1.0" step="0.01" value="0.25" style="width: 100px"> <span id="spanFilter">0.25</span></td>
+	</tr>
+</table>
 
   <table>
   	<tr>
@@ -85,18 +91,18 @@ Signal:
 	</tr>
   	<tr>
   		<td>
-			<div id="timeSampledDiv" style="width:650px;height:200px;"></div>
+			<button onclick="$('#timeSampledDiv').toggle()">Time sampled</button> <div id="timeSampledDiv" style="width:650px;height:200px; display: none;"></div>
 		</td>
 		<td>
-			<div id="freqSampledDiv" style="width:650px;height:200px;"></div>
+			<button onclick="$('#freqSampledDiv').toggle()">Freq. sampled</button> <div id="freqSampledDiv" style="width:650px;height:200px; display: none;"></div>
 		</td>
 	</tr>
   	<tr>
   		<td>
-			<div id="timeRecoveredDiv" style="width:650px;height:200px;"></div>
+			<button onclick="$('#timeRecoveredDiv').toggle()">Time recovered</button> <div id="timeRecoveredDiv" style="width:650px;height:200px; display: none;"></div>
 		</td>
 		<td>
-			<div id="freqRecoveredDiv" style="width:650px;height:200px;"></div>
+			<button onclick="$('#freqRecoveredDiv').toggle()">Freq. recovered</button> <div id="freqRecoveredDiv" style="width:650px;height:200px; display: none;"></div>
 		</td>
 	</tr>
 </table>
